@@ -49,6 +49,7 @@
         .input-field {
             margin-bottom: 8px;
             width: 100%;
+            cursor: text;
         }
         
         .controls {
@@ -244,11 +245,6 @@
         
         // Also allow clicking on the workspace to add boxes
         workspace.addEventListener('click', handleWorkspaceClick);
-        
-        // Event listeners for drag and drop
-        workspace.addEventListener('mousedown', startDrag);
-        document.addEventListener('mousemove', dragElement);
-        document.addEventListener('mouseup', stopDrag);
         
         // Functions
         function showBoxTypeModal(e) {
@@ -483,6 +479,11 @@
         }
         
         function startDrag(e) {
+            // Check if the click is on an input field - if so, don't start dragging
+            if (e.target.classList.contains('input-field')) {
+                return;
+            }
+            
             // Check if the click is on a box or its child (except remove button)
             let target = e.target;
             while (target && !target.classList.contains('box')) {
@@ -639,6 +640,11 @@
                 connectionsSvg.removeChild(connectionsSvg.firstChild);
             }
         }
+        
+        // Add these event listeners for input interaction
+        workspace.addEventListener('mousedown', startDrag);
+        document.addEventListener('mousemove', dragElement);
+        document.addEventListener('mouseup', stopDrag);
     </script>
 </body>
 </html>
