@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Box Drag & Drop Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .workspace {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            border: 2px dashed #ccc;
+            margin-bottom: 20px;
+            background-color: white;
+            overflow: auto;
+        }
+        
+        .box {
+            position: absolute;
+            width: 200px;
+            border: 2px solid #000;
+            background-color: white;
+            padding: 10px;
+            cursor: move;
+            user-select: none;
+            z-index: 10;
+        }
+        
+        .box-header {
+            padding: 5px;
+            background-color: #f0f0f0;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .remove-btn {
+            cursor: pointer;
+            color: red;
+            font-weight: bold;
+        }
+        
+        .input-field {
+            margin-bottom: 8px;
+            width: 100%;
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+        }
+        
+        button {
+            padding: 10px 15px;
+            margin-right: 10px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            position: relative;
+            background-color: white;
+            margin: 10% auto;
+            padding: 20px;
+            width: 50%;
+            border-radius: 5px;
+        }
+        
+        .close {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        #encoded-output, #encoded-input {
+            width: 100%;
+            height: 100px;
+            margin-top: 10px;
+            padding: 10px;
+            word-break: break-all;
+        }
+        
+        #connections-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        .arrow {
+            fill: #333;
+        }
+        
+        .connector {
+            stroke: #333;
+            stroke-width: 2;
+            fill: none;
+        }
+        
+        .box-number {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            text-align: center;
+            line-height: 24px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Box Drag & Drop Interface</h1>
+    
+    <div class="controls">
+        <button id="add-box-btn">Add Box</button>
+        <button id="encode-btn">Encode</button>
+        <button id="load-btn">Load from Encoded String</button>
+    </div>
+    
+    <div class="workspace" id="workspace">
+        <svg id="connections-svg"></svg>
+    </div>
+    
+    <!-- Box Type Selection Modal -->
+    <div class="modal" id="box-type-modal">
+        <div class="modal-content">
+            <span class="close" id="close-box-modal">&times;</span>
+            <h2>Select Box Type</h2>
+            <button id="box-type-a">Box A (1 input)</button>
+            <button id="box-type-b">Box B (2 inputs)</button>
+            <button id="box-type-c">Box C (3 inputs)</button>
+        </div>
+    </div>
+    
+    <!-- Encoded Output Modal -->
+    <div class="modal" id="encoded-modal">
+        <div class="modal-content">
+            <span class="close" id="close-encoded-modal">&times;</span>
+            <h2>Encoded Data</h2>
+            <textarea id="encoded-output" readonly></textarea>
+            <button id="copy-btn">Copy to Clipboard</button>
+        </div>
+    </div>
+    
+    <!-- Load Encoded String Modal -->
+    <div class="modal" id="load-modal">
+        <div class="modal-content">
+            <span class="close" id="close-load-modal">&times;</span>
+            <h2>Load from Encoded String</h2>
+            <textarea id="encoded-input" placeholder="Paste your encoded string here..."></textarea>
+            <button id="load-confirm-btn">Load</button>
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        let boxes = [];
+        let boxIdCounter = 0;
+        let clickPosition = { x: 0, y: 0 };
+        
+        // DOM Elements
+        const workspace = document.getElementById('workspace');
+        const connectionsSvg = document.getElementById('connections-svg');
+        const addBoxBtn = document.getElementById('add-box-btn');
+        const encodeBtn = document.getElementById('encode-btn');
+        const loadBtn = document.getElementById('load-btn');
+        const boxTypeModal = document.getElementById('box-type-modal');
+        const closeBoxModal = document.getElementById('close-box-modal');
+        const encodedModal = document.getElementById('encoded-modal');
+        const closeEncodedModal = document.getElementById('close-encoded-modal');
+        const loadModal = document.getElementById('load-modal');
+        const closeLoadModal = document.getElementById('close-load-modal');
+        const encodedOutput = document.getElementById('encoded-output');
+        const encodedInput = document.getElementById('encoded-input');
+        const copyBtn = document.getElementById('copy-btn');
+        const loadConfirmBtn = document.getElementById('load-confirm-btn');
+        
+        // Box type buttons
+        const boxTypeA = document.getElementById('box-type-a');
+        const boxTypeB = document.getElementById('box-type-b');
+        const boxTypeC = document.getElementById('box-type-c');
+        
+        // Initialize drag state
+        let isDragging = false;
+        let currentDragElement = null;
+        let offsetX = 0;
+        let offsetY = 0;
+        
+        // Initialize size of SVG
+        function updateSvgSize() {
+            connectionsSvg.setAttribute('width', workspace.clientWidth);
+            connectionsSvg.setAttribute('height', workspace.clientHeight);
+        }
+        
+        // Update on load and window resize
+        window.addEventListener('load', updateSvgSize);
+        window.addEventListener('resize', updateSvgSize);
+        
+        // Add event listeners
+        addBoxBtn.addEventListener('click', showBoxTypeModal);
+        encodeBtn.addEventListener('click', encodeBoxes);
+        loadBtn.addEventListener('click', showLoadModal);
+        closeBoxModal.addEventListener('click', hideBoxTypeModal);
+        closeEncodedModal.addEventListener('click', hideEncodedModal);
+        closeLoadModal.addEventListener('click', hideLoadModal);
+        copyBtn.addEventListener('click', copyToClipboard);
+        loadConfirmBtn.addEventListener('click', loadFromEncoded);
+        
+        boxTypeA.addEventListener('click', () => createBox('A', 1));
+        boxTypeB.addEventListener('click', () => createBox('B', 2));
+        boxTypeC.addEventListener('click', () => createBox('C', 3));
+        
+        // Also allow clicking on the workspace to add boxes
+        workspace.addEventListener('click', handleWorkspaceClick);
+        
+        // Event listeners for drag and drop
+        workspace.addEventListener('mousedown', startDrag);
+        document.addEventListener('mousemove', dragElement);
+        document.addEventListener('mouseup', stopDrag);
+        
+        // Functions
+        function showBoxTypeModal(e) {
+            if (e.target === workspace || e.target === connectionsSvg) {
+                clickPosition.x = e.clientX - workspace.getBoundingClientRect().left;
+                clickPosition.y = e.clientY - workspace.getBoundingClientRect().top;
+            } else {
+                // Default position if not clicking on workspace
+                clickPosition.x = 50;
+                clickPosition.y = 50;
+            }
+            
+            boxTypeModal.style.display = 'block';
+        }
+        
+        function hideBoxTypeModal() {
+            boxTypeModal.style.display = 'none';
+        }
+        
+        function hideEncodedModal() {
+            encodedModal.style.display = 'none';
+        }
+        
+        function showLoadModal() {
+            loadModal.style.display = 'block';
+            encodedInput.focus();
+        }
+        
+        function hideLoadModal() {
+            loadModal.style.display = 'none';
+        }
+        
+        function handleWorkspaceClick(e) {
+            // Only show modal if clicking directly on the workspace (not on a box)
+            if (e.target === workspace || e.target === connectionsSvg) {
+                clickPosition.x = e.clientX - workspace.getBoundingClientRect().left;
+                clickPosition.y = e.clientY - workspace.getBoundingClientRect().top;
+                showBoxTypeModal(e);
+            }
+        }
+        
+        function createBox(type, inputCount, existingData = null) {
+            const boxId = existingData ? existingData.id : `box-${boxIdCounter++}`;
+            const boxIndex = existingData ? existingData.index : boxes.length;
+            
+            const box = document.createElement('div');
+            box.className = 'box';
+            box.id = boxId;
+            
+            // Position the box
+            const position = existingData ? existingData.position : { x: clickPosition.x, y: clickPosition.y };
+            box.style.left = `${position.x}px`;
+            box.style.top = `${position.y}px`;
+            box.dataset.index = boxIndex;
+            
+            // Add box number
+            const boxNumber = document.createElement('div');
+            boxNumber.className = 'box-number';
+            boxNumber.textContent = boxIndex + 1; // 1-based numbering for display
+            box.appendChild(boxNumber);
+            
+            // Create box data structure
+            const boxData = existingData || {
+                id: boxId,
+                type: type,
+                position: position,
+                inputs: Array(inputCount).fill(''),
+                index: boxIndex
+            };
+            
+            // Create box header
+            const header = document.createElement('div');
+            header.className = 'box-header';
+            header.innerHTML = `<span>Box ${boxData.type} (${getInputCount(boxData.type)} input${getInputCount(boxData.type) > 1 ? 's' : ''})</span>
+                              <span class="remove-btn" data-id="${boxId}">×</span>`;
+            
+            box.appendChild(header);
+            
+            // Add input fields
+            const inputCount2 = getInputCount(boxData.type);
+            for (let i = 0; i < inputCount2; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'input-field';
+                input.placeholder = `Input ${i + 1}`;
+                input.dataset.index = i;
+                
+                // Set value if it exists
+                if (boxData.inputs && boxData.inputs[i] !== undefined) {
+                    input.value = boxData.inputs[i];
+                }
+                
+                // Add event listener to update box data
+                input.addEventListener('input', (e) => {
+                    const index = parseInt(e.target.dataset.index);
+                    boxData.inputs[index] = e.target.value;
+                });
+                
+                box.appendChild(input);
+            }
+            
+            workspace.appendChild(box);
+            
+            // Add remove event listener
+            box.querySelector('.remove-btn').addEventListener('click', () => removeBox(boxId));
+            
+            // Add box to boxes array if it's new
+            if (!existingData) {
+                boxes.push(boxData);
+            }
+            
+            // Draw connections
+            drawConnections();
+            
+            // Hide the modal after creating the box
+            hideBoxTypeModal();
+            
+            return boxData;
+        }
+        
+        // Get input count based on box type
+        function getInputCount(type) {
+            switch(type) {
+                case 'A': return 1;
+                case 'B': return 2;
+                case 'C': return 3;
+                default: return 1;
+            }
+        }
+        
+        function removeBox(boxId) {
+            // Find the index of the box to remove
+            const boxIndex = boxes.findIndex(box => box.id === boxId);
+            
+            if (boxIndex !== -1) {
+                // Remove from DOM
+                const box = document.getElementById(boxId);
+                if (box) {
+                    box.remove();
+                }
+                
+                // Remove from data structure
+                boxes.splice(boxIndex, 1);
+                
+                // Update the index property of all remaining boxes
+                boxes.forEach((box, idx) => {
+                    box.index = idx;
+                    const boxElement = document.getElementById(box.id);
+                    if (boxElement) {
+                        boxElement.dataset.index = idx;
+                        const boxNumber = boxElement.querySelector('.box-number');
+                        if (boxNumber) {
+                            boxNumber.textContent = idx + 1; // 1-based numbering for display
+                        }
+                    }
+                });
+                
+                // Redraw connections
+                drawConnections();
+            }
+        }
+        
+        function drawConnections() {
+            // Clear existing connections
+            while (connectionsSvg.firstChild) {
+                connectionsSvg.removeChild(connectionsSvg.firstChild);
+            }
+            
+            if (boxes.length <= 1) return; // No connections to draw
+            
+            // Sort boxes by their index
+            const sortedBoxes = [...boxes].sort((a, b) => a.index - b.index);
+            
+            // Draw connections between each consecutive box
+            for (let i = 0; i < sortedBoxes.length - 1; i++) {
+                const fromBox = sortedBoxes[i];
+                const toBox = sortedBoxes[i + 1];
+                
+                const fromElement = document.getElementById(fromBox.id);
+                const toElement = document.getElementById(toBox.id);
+                
+                if (fromElement && toElement) {
+                    // Calculate center points of each box
+                    const fromRect = fromElement.getBoundingClientRect();
+                    const toRect = toElement.getBoundingClientRect();
+                    const workspaceRect = workspace.getBoundingClientRect();
+                    
+                    const fromX = fromElement.offsetLeft + fromElement.offsetWidth / 2;
+                    const fromY = fromElement.offsetTop + fromElement.offsetHeight / 2;
+                    const toX = toElement.offsetLeft + toElement.offsetWidth / 2;
+                    const toY = toElement.offsetTop + toElement.offsetHeight / 2;
+                    
+                    // Create the line
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', fromX);
+                    line.setAttribute('y1', fromY);
+                    line.setAttribute('x2', toX);
+                    line.setAttribute('y2', toY);
+                    line.setAttribute('class', 'connector');
+                    
+                    // Create the arrow
+                    const arrowHeadSize = 8;
+                    const angle = Math.atan2(toY - fromY, toX - fromX);
+                    
+                    const arrowTip = {
+                        x: toX - Math.cos(angle) * (toElement.offsetWidth / 2 + 2),
+                        y: toY - Math.sin(angle) * (toElement.offsetHeight / 2 + 2)
+                    };
+                    
+                    // Adjust line end to arrow tip
+                    line.setAttribute('x2', arrowTip.x);
+                    line.setAttribute('y2', arrowTip.y);
+                    
+                    // Create arrowhead
+                    const arrowHead = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                    const point1 = {
+                        x: arrowTip.x - arrowHeadSize * Math.cos(angle - Math.PI / 6),
+                        y: arrowTip.y - arrowHeadSize * Math.sin(angle - Math.PI / 6)
+                    };
+                    const point2 = {
+                        x: arrowTip.x - arrowHeadSize * Math.cos(angle + Math.PI / 6),
+                        y: arrowTip.y - arrowHeadSize * Math.sin(angle + Math.PI / 6)
+                    };
+                    arrowHead.setAttribute('points', `${arrowTip.x},${arrowTip.y} ${point1.x},${point1.y} ${point2.x},${point2.y}`);
+                    arrowHead.setAttribute('class', 'arrow');
+                    
+                    // Add to SVG
+                    connectionsSvg.appendChild(line);
+                    connectionsSvg.appendChild(arrowHead);
+                }
+            }
+        }
+        
+        function startDrag(e) {
+            // Check if the click is on a box or its child (except remove button)
+            let target = e.target;
+            while (target && !target.classList.contains('box')) {
+                if (target.classList.contains('remove-btn') || target === workspace || target === connectionsSvg) {
+                    return; // Don't drag if clicking on remove button or workspace
+                }
+                target = target.parentElement;
+            }
+            
+            if (target && target.classList.contains('box')) {
+                isDragging = true;
+                currentDragElement = target;
+                
+                // Calculate offset
+                const rect = currentDragElement.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+                
+                // Prevent default behavior
+                e.preventDefault();
+            }
+        }
+        
+        function dragElement(e) {
+            if (!isDragging || !currentDragElement) return;
+            
+            e.preventDefault();
+            
+            // Calculate new position
+            const workspaceRect = workspace.getBoundingClientRect();
+            let newX = e.clientX - workspaceRect.left - offsetX;
+            let newY = e.clientY - workspaceRect.top - offsetY;
+            
+            // Constrain to workspace
+            newX = Math.max(0, Math.min(newX, workspaceRect.width - currentDragElement.offsetWidth));
+            newY = Math.max(0, Math.min(newY, workspaceRect.height - currentDragElement.offsetHeight));
+            
+            // Update element position
+            currentDragElement.style.left = `${newX}px`;
+            currentDragElement.style.top = `${newY}px`;
+            
+            // Update box data
+            const boxId = currentDragElement.id;
+            const boxIndex = boxes.findIndex(box => box.id === boxId);
+            if (boxIndex !== -1) {
+                boxes[boxIndex].position = { x: newX, y: newY };
+            }
+            
+            // Redraw connections
+            drawConnections();
+        }
+        
+        function stopDrag() {
+            isDragging = false;
+            currentDragElement = null;
+        }
+        
+        function encodeBoxes() {
+            // Collect input values first
+            collectInputValues();
+            
+            // Convert boxes to JSON and encode as base64
+            const boxesJSON = JSON.stringify(boxes);
+            const encodedData = btoa(boxesJSON);
+            
+            // Display in modal
+            encodedOutput.value = encodedData;
+            encodedModal.style.display = 'block';
+        }
+        
+        function collectInputValues() {
+            boxes.forEach(boxData => {
+                const box = document.getElementById(boxData.id);
+                if (box) {
+                    const inputs = box.querySelectorAll('input.input-field');
+                    inputs.forEach((input, index) => {
+                        boxData.inputs[index] = input.value;
+                    });
+                }
+            });
+        }
+        
+        function copyToClipboard() {
+            encodedOutput.select();
+            document.execCommand('copy');
+            
+            // Show feedback (optional)
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+            }, 2000);
+        }
+        
+        function loadFromEncoded() {
+            try {
+                const encodedString = encodedInput.value.trim();
+                if (!encodedString) {
+                    alert("Please enter an encoded string.");
+                    return;
+                }
+                
+                const decodedJSON = atob(encodedString);
+                const loadedBoxes = JSON.parse(decodedJSON);
+                
+                // Check if the loaded data is valid
+                if (!Array.isArray(loadedBoxes)) {
+                    throw new Error("Invalid box data format.");
+                }
+                
+                // Clear existing boxes
+                clearAllBoxes();
+                
+                // Find the highest counter value to avoid ID conflicts
+                let maxId = 0;
+                loadedBoxes.forEach(box => {
+                    const idMatch = box.id.match(/box-(\d+)/);
+                    if (idMatch && parseInt(idMatch[1]) > maxId) {
+                        maxId = parseInt(idMatch[1]);
+                    }
+                });
+                boxIdCounter = maxId + 1;
+                
+                // Create boxes based on loaded data
+                loadedBoxes.sort((a, b) => a.index - b.index);
+                loadedBoxes.forEach(boxData => {
+                    boxes.push(boxData);
+                    createBox(boxData.type, boxData.inputs.length, boxData);
+                });
+                
+                hideLoadModal();
+                
+                // Clear the input field for next time
+                encodedInput.value = '';
+            } catch (error) {
+                alert("Error loading boxes: " + error.message);
+            }
+        }
+        
+        function clearAllBoxes() {
+            // Remove all box elements from DOM
+            boxes.forEach(box => {
+                const element = document.getElementById(box.id);
+                if (element) {
+                    element.remove();
+                }
+            });
+            
+            // Clear the boxes array
+            boxes = [];
+            
+            // Clear connections
+            while (connectionsSvg.firstChild) {
+                connectionsSvg.removeChild(connectionsSvg.firstChild);
+            }
+        }
+    </script>
+</body>
+</html>
