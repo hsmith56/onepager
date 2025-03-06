@@ -23,7 +23,7 @@
         
         .box {
             position: absolute;
-            width: 200px;
+            width: 250px; /* Increased width to accommodate labels */
             border: 2px solid #000;
             background-color: white;
             padding: 10px;
@@ -46,10 +46,22 @@
             font-weight: bold;
         }
         
-        .input-field {
+        .input-container {
+            display: flex;
+            align-items: center;
             margin-bottom: 8px;
-            width: 100%;
+        }
+        
+        .input-label {
+            min-width: 80px;
+            margin-right: 5px;
+            font-size: 0.9em;
+        }
+        
+        .input-field {
+            flex: 1;
             cursor: text;
+            padding: 5px;
         }
         
         .controls {
@@ -88,6 +100,8 @@
             padding: 20px;
             width: 50%;
             border-radius: 5px;
+            max-height: 70vh;
+            overflow-y: auto;
         }
         
         .close {
@@ -139,6 +153,13 @@
             line-height: 24px;
             font-weight: bold;
         }
+        
+        .box-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -159,9 +180,9 @@
         <div class="modal-content">
             <span class="close" id="close-box-modal">&times;</span>
             <h2>Select Box Type</h2>
-            <button id="box-type-a">Box A (1 input)</button>
-            <button id="box-type-b">Box B (2 inputs)</button>
-            <button id="box-type-c">Box C (3 inputs)</button>
+            <div class="box-buttons" id="box-types-container">
+                <!-- Box types will be dynamically inserted here -->
+            </div>
         </div>
     </div>
     
@@ -207,11 +228,7 @@
         const encodedInput = document.getElementById('encoded-input');
         const copyBtn = document.getElementById('copy-btn');
         const loadConfirmBtn = document.getElementById('load-confirm-btn');
-        
-        // Box type buttons
-        const boxTypeA = document.getElementById('box-type-a');
-        const boxTypeB = document.getElementById('box-type-b');
-        const boxTypeC = document.getElementById('box-type-c');
+        const boxTypesContainer = document.getElementById('box-types-container');
         
         // Initialize drag state
         let isDragging = false;
@@ -219,7 +236,64 @@
         let offsetX = 0;
         let offsetY = 0;
         
-        // Initialize size of SVG
+        // Define box types - central configuration for all box types
+        const boxTypes = {
+            'A': {
+                name: 'Box A',
+                description: 'Single input box',
+                inputs: [
+                    { id: 'input1', label: 'Value', placeholder: 'Enter value' }
+                ]
+            },
+            'B': {
+                name: 'Box B',
+                description: 'Two input box',
+                inputs: [
+                    { id: 'input1', label: 'Name', placeholder: 'Enter name' },
+                    { id: 'input2', label: 'Value', placeholder: 'Enter value' }
+                ]
+            },
+            'C': {
+                name: 'Box C',
+                description: 'Three input box',
+                inputs: [
+                    { id: 'input1', label: 'X', placeholder: 'Enter X value' },
+                    { id: 'input2', label: 'Y', placeholder: 'Enter Y value' },
+                    { id: 'input3', label: 'Z', placeholder: 'Enter Z value' }
+                ]
+            },
+            'D': {
+                name: 'Box D',
+                description: 'Four input box',
+                inputs: [
+                    { id: 'name', label: 'Name', placeholder: 'Enter name' },
+                    { id: 'age', label: 'Age', placeholder: 'Enter age' },
+                    { id: 'city', label: 'City', placeholder: 'Enter city' },
+                    { id: 'state', label: 'State', placeholder: 'Enter state' }
+                ]
+            }
+        };
+        
+        // Initialize box type buttons
+        function initializeBoxTypeButtons() {
+            boxTypesContainer.innerHTML = '';
+            
+            Object.keys(boxTypes).forEach(type => {
+                const boxConfig = boxTypes[type];
+                const button = document.createElement('button');
+                button.id = `box-type-${type.toLowerCase()}`;
+                button.textContent = `${boxConfig.name} (${boxConfig.inputs.length} input${boxConfig.inputs.length > 1 ? 's' : ''})`;
+                button.title = boxConfig.description;
+                button.addEventListener('click', () => createBox(type));
+                
+                boxTypesContainer.appendChild(button);
+            });
+        }
+        
+        // Initialize
+        initializeBoxTypeButtons();
+        
+        // Update SVG size
         function updateSvgSize() {
             connectionsSvg.setAttribute('width', workspace.clientWidth);
             connectionsSvg.setAttribute('height', workspace.clientHeight);
@@ -238,10 +312,6 @@
         closeLoadModal.addEventListener('click', hideLoadModal);
         copyBtn.addEventListener('click', copyToClipboard);
         loadConfirmBtn.addEventListener('click', loadFromEncoded);
-        
-        boxTypeA.addEventListener('click', () => createBox('A', 1));
-        boxTypeB.addEventListener('click', () => createBox('B', 2));
-        boxTypeC.addEventListener('click', () => createBox('C', 3));
         
         // Also allow clicking on the workspace to add boxes
         workspace.addEventListener('click', handleWorkspaceClick);
@@ -286,7 +356,15 @@
             }
         }
         
-        function createBox(type, inputCount, existingData = null) {
+        function createBox(type, existingData = null) {
+            // Get box configuration
+            const boxConfig = boxTypes[type];
+            if (!boxConfig) {
+                console.error(`Box type ${type} not found`);
+                return;
+            }
+            
+            const inputCount = boxConfig.inputs.length;
             const boxId = existingData ? existingData.id : `box-${boxIdCounter++}`;
             const boxIndex = existingData ? existingData.index : boxes.length;
             
@@ -299,6 +377,7 @@
             box.style.left = `${position.x}px`;
             box.style.top = `${position.y}px`;
             box.dataset.index = boxIndex;
+            box.dataset.type = type;
             
             // Add box number
             const boxNumber = document.createElement('div');
@@ -318,18 +397,26 @@
             // Create box header
             const header = document.createElement('div');
             header.className = 'box-header';
-            header.innerHTML = `<span>Box ${boxData.type} (${getInputCount(boxData.type)} input${getInputCount(boxData.type) > 1 ? 's' : ''})</span>
+            header.innerHTML = `<span>${boxConfig.name} (${inputCount} input${inputCount > 1 ? 's' : ''})</span>
                               <span class="remove-btn" data-id="${boxId}">×</span>`;
             
             box.appendChild(header);
             
             // Add input fields
-            const inputCount2 = getInputCount(boxData.type);
-            for (let i = 0; i < inputCount2; i++) {
+            boxConfig.inputs.forEach((inputConfig, i) => {
+                const inputContainer = document.createElement('div');
+                inputContainer.className = 'input-container';
+                
+                const label = document.createElement('label');
+                label.className = 'input-label';
+                label.textContent = inputConfig.label + ':';
+                label.htmlFor = `${boxId}-${inputConfig.id}`;
+                
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.className = 'input-field';
-                input.placeholder = `Input ${i + 1}`;
+                input.id = `${boxId}-${inputConfig.id}`;
+                input.placeholder = inputConfig.placeholder;
                 input.dataset.index = i;
                 
                 // Set value if it exists
@@ -343,8 +430,10 @@
                     boxData.inputs[index] = e.target.value;
                 });
                 
-                box.appendChild(input);
-            }
+                inputContainer.appendChild(label);
+                inputContainer.appendChild(input);
+                box.appendChild(inputContainer);
+            });
             
             workspace.appendChild(box);
             
@@ -363,16 +452,6 @@
             hideBoxTypeModal();
             
             return boxData;
-        }
-        
-        // Get input count based on box type
-        function getInputCount(type) {
-            switch(type) {
-                case 'A': return 1;
-                case 'B': return 2;
-                case 'C': return 3;
-                default: return 1;
-            }
         }
         
         function removeBox(boxId) {
@@ -428,10 +507,6 @@
                 
                 if (fromElement && toElement) {
                     // Calculate center points of each box
-                    const fromRect = fromElement.getBoundingClientRect();
-                    const toRect = toElement.getBoundingClientRect();
-                    const workspaceRect = workspace.getBoundingClientRect();
-                    
                     const fromX = fromElement.offsetLeft + fromElement.offsetWidth / 2;
                     const fromY = fromElement.offsetTop + fromElement.offsetHeight / 2;
                     const toX = toElement.offsetLeft + toElement.offsetWidth / 2;
@@ -445,35 +520,8 @@
                     line.setAttribute('y2', toY);
                     line.setAttribute('class', 'connector');
                     
-                    // Create the arrow
-                    const arrowHeadSize = 8;
-                    const angle = Math.atan2(toY - fromY, toX - fromX);
-                    
-                    const arrowTip = {
-                        x: toX - Math.cos(angle) * (toElement.offsetWidth / 2 + 2),
-                        y: toY - Math.sin(angle) * (toElement.offsetHeight / 2 + 2)
-                    };
-                    
-                    // Adjust line end to arrow tip
-                    line.setAttribute('x2', arrowTip.x);
-                    line.setAttribute('y2', arrowTip.y);
-                    
-                    // Create arrowhead
-                    const arrowHead = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                    const point1 = {
-                        x: arrowTip.x - arrowHeadSize * Math.cos(angle - Math.PI / 6),
-                        y: arrowTip.y - arrowHeadSize * Math.sin(angle - Math.PI / 6)
-                    };
-                    const point2 = {
-                        x: arrowTip.x - arrowHeadSize * Math.cos(angle + Math.PI / 6),
-                        y: arrowTip.y - arrowHeadSize * Math.sin(angle + Math.PI / 6)
-                    };
-                    arrowHead.setAttribute('points', `${arrowTip.x},${arrowTip.y} ${point1.x},${point1.y} ${point2.x},${point2.y}`);
-                    arrowHead.setAttribute('class', 'arrow');
-                    
                     // Add to SVG
                     connectionsSvg.appendChild(line);
-                    connectionsSvg.appendChild(arrowHead);
                 }
             }
         }
@@ -570,7 +618,7 @@
             encodedOutput.select();
             document.execCommand('copy');
             
-            // Show feedback (optional)
+            // Show feedback
             const originalText = copyBtn.textContent;
             copyBtn.textContent = 'Copied!';
             setTimeout(() => {
@@ -611,7 +659,7 @@
                 loadedBoxes.sort((a, b) => a.index - b.index);
                 loadedBoxes.forEach(boxData => {
                     boxes.push(boxData);
-                    createBox(boxData.type, boxData.inputs.length, boxData);
+                    createBox(boxData.type, boxData);
                 });
                 
                 hideLoadModal();
