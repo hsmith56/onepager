@@ -305,34 +305,100 @@
                 name: 'Box A',
                 description: 'Single input box',
                 inputs: [
-                    { id: 'input1', label: 'Value', placeholder: 'Enter value' }
+                    { 
+                        id: 'input1', 
+                        label: 'Value', 
+                        placeholder: 'Enter value',
+                        required: true,
+                        validation: (value) => value.trim().length !== 0 ? null : 'This field cannot be blank',
+                        defaultValue: ''
+                    }
                 ]
             },
             'B': {
                 name: 'Box B',
                 description: 'Two input box',
                 inputs: [
-                    { id: 'input1', label: 'Name', placeholder: 'Enter name' },
-                    { id: 'input2', label: 'Value', placeholder: 'Enter value' }
+                    { 
+                        id: 'input1', 
+                        label: 'Name', 
+                        placeholder: 'Enter name',
+                        required: false,
+                        defaultValue: ''
+                    },
+                    { 
+                        id: 'input2', 
+                        label: 'Value', 
+                        placeholder: 'Enter value',
+                        required: false,
+                        defaultValue: ''
+                    }
                 ]
             },
             'C': {
                 name: 'Box C',
                 description: 'Three input box',
                 inputs: [
-                    { id: 'input1', label: 'X', placeholder: 'Enter X value' },
-                    { id: 'input2', label: 'Y', placeholder: 'Enter Y value' },
-                    { id: 'input3', label: 'Z', placeholder: 'Enter Z value' }
+                    { 
+                        id: 'input1', 
+                        label: 'X', 
+                        placeholder: 'Enter X value',
+                        required: false,
+                        defaultValue: ''
+                    },
+                    { 
+                        id: 'input2', 
+                        label: 'Y', 
+                        placeholder: 'Enter Y value',
+                        required: false,
+                        defaultValue: ''
+                    },
+                    { 
+                        id: 'input3', 
+                        label: 'Z', 
+                        placeholder: 'Enter Z value',
+                        required: false,
+                        defaultValue: 'default_val'
+                    }
                 ]
             },
             'D': {
                 name: 'Box D',
                 description: 'Four input box',
                 inputs: [
-                    { id: 'name', label: 'Name', placeholder: 'Enter name' },
-                    { id: 'age', label: 'Age', placeholder: 'Enter age' },
-                    { id: 'city', label: 'City', placeholder: 'Enter city' },
-                    { id: 'state', label: 'State', placeholder: 'Enter state' }
+                    { 
+                        id: 'name', 
+                        label: 'Name', 
+                        placeholder: 'Enter name',
+                        required: false,
+                        defaultValue: ''
+                    },
+                    { 
+                        id: 'age', 
+                        label: 'Age', 
+                        placeholder: 'Enter age',
+                        required: false,
+                        validation: (value) => {
+                            if (value === '') return null;
+                            const age = parseInt(value);
+                            return isNaN(age) || age < 0 ? 'Age must be a positive number' : null;
+                        },
+                        defaultValue: ''
+                    },
+                    { 
+                        id: 'city', 
+                        label: 'City', 
+                        placeholder: 'Enter city',
+                        required: false,
+                        defaultValue: ''
+                    },
+                    { 
+                        id: 'state', 
+                        label: 'State', 
+                        placeholder: 'Enter state',
+                        required: false,
+                        defaultValue: ''
+                    }
                 ]
             }
         };
@@ -483,17 +549,26 @@
             boxNumber.textContent = boxIndex + 1; // 1-based numbering for display
             box.appendChild(boxNumber);
             
-            // Create box data structure
+            // Create box data structure with default values from the box type
+            const boxInputs = boxConfig.inputs.map((inputConfig, idx) => {
+                if (existingData && existingData.inputs && existingData.inputs[idx] !== undefined) {
+                    return existingData.inputs[idx];
+                } else {
+                    return inputConfig.defaultValue || '';
+                }
+            });
+            
             const boxData = existingData || {
                 id: boxId,
                 type: type,
                 position: position,
-                inputs: Array(inputCount).fill(''),
+                inputs: boxInputs,
                 index: boxIndex,
                 config: {
                     actionOnError: 'continue',
                     example_b: false
-                }
+                },
+                validationErrors: {}
             };
             
             // Ensure config object exists in existing data
@@ -502,6 +577,11 @@
                     actionOnError: 'continue',
                     example_b: false
                 };
+            }
+            
+            // Initialize validationErrors if not present
+            if (!boxData.validationErrors) {
+                boxData.validationErrors = {};
             }
             
             // Create box header
@@ -612,7 +692,7 @@
             configMenu.appendChild(exampleItem);
             
             box.appendChild(configMenu);
-            
+
             // Add input fields
             boxConfig.inputs.forEach((inputConfig, i) => {
                 const inputContainer = document.createElement('div');
@@ -620,8 +700,12 @@
                 
                 const label = document.createElement('label');
                 label.className = 'input-label';
-                label.textContent = inputConfig.label + ':';
+                label.textContent = inputConfig.label + (inputConfig.required ? ' *' : ':');
                 label.htmlFor = `${boxId}-${inputConfig.id}`;
+                
+                if (inputConfig.required) {
+                    label.style.fontWeight = 'bold';
+                }
                 
                 const input = document.createElement('input');
                 input.type = 'text';
@@ -629,23 +713,92 @@
                 input.id = `${boxId}-${inputConfig.id}`;
                 input.placeholder = inputConfig.placeholder;
                 input.dataset.index = i;
+                input.dataset.required = inputConfig.required ? 'true' : 'false';
                 
-                // Set value if it exists
+                // Set value if it exists, otherwise use default value
                 if (boxData.inputs && boxData.inputs[i] !== undefined) {
                     input.value = boxData.inputs[i];
+                } else {
+                    input.value = inputConfig.defaultValue || '';
                 }
                 
-                // Add event listener to update box data
+                // Create validation message element
+                const validationMsg = document.createElement('div');
+                validationMsg.className = 'validation-message';
+                validationMsg.style.color = 'red';
+                validationMsg.style.fontSize = '0.8em';
+                validationMsg.style.marginTop = '2px';
+                validationMsg.style.display = 'none';
+                validationMsg.id = `${boxId}-${inputConfig.id}-validation`;
+                
+                // Add event listener to update box data and validate
                 input.addEventListener('input', (e) => {
                     const index = parseInt(e.target.dataset.index);
                     const boxIndex = boxes.findIndex(box => box.id === boxId);
                     if (boxIndex !== -1) {
                         boxes[boxIndex].inputs[index] = e.target.value;
+                        
+                        // Run validation if available
+                        if (inputConfig.validation) {
+                            const error = inputConfig.validation(e.target.value);
+                            boxes[boxIndex].validationErrors[inputConfig.id] = error;
+                            
+                            // Update UI
+                            if (error) {
+                                validationMsg.textContent = error;
+                                validationMsg.style.display = 'block';
+                                input.style.borderColor = 'red';
+                            } else {
+                                validationMsg.style.display = 'none';
+                                input.style.borderColor = '';
+                            }
+                        } else if (inputConfig.required && e.target.value.trim() === '') {
+                            // Basic required field validation
+                            boxes[boxIndex].validationErrors[inputConfig.id] = 'This field is required';
+                            validationMsg.textContent = 'This field is required';
+                            validationMsg.style.display = 'block';
+                            input.style.borderColor = 'red';
+                        } else {
+                            // Clear validation errors
+                            boxes[boxIndex].validationErrors[inputConfig.id] = null;
+                            validationMsg.style.display = 'none';
+                            input.style.borderColor = '';
+                        }
                     }
                 });
                 
+                // Trigger validation on creation for required fields
+                if (inputConfig.required && (!input.value || input.value.trim() === '')) {
+                    const boxIndex = boxes.findIndex(box => box.id === boxId) || boxes.length;
+                    if (boxIndex !== -1) {
+                        if (!boxes[boxIndex]) {
+                            boxes[boxIndex] = boxData;
+                        }
+                        boxes[boxIndex].validationErrors[inputConfig.id] = 'This field is required';
+                        validationMsg.textContent = 'This field is required';
+                        validationMsg.style.display = 'block';
+                        input.style.borderColor = 'red';
+                    }
+                } else if (inputConfig.validation && input.value) {
+                    // Run validation for non-empty fields
+                    const error = inputConfig.validation(input.value);
+                    if (error) {
+                        const boxIndex = boxes.findIndex(box => box.id === boxId) || boxes.length;
+                        if (boxIndex !== -1) {
+                            if (!boxes[boxIndex]) {
+                                boxes[boxIndex] = boxData;
+                            }
+                            boxes[boxIndex].validationErrors[inputConfig.id] = error;
+                            validationMsg.textContent = error;
+                            validationMsg.style.display = 'block';
+                            input.style.borderColor = 'red';
+                        }
+                    }
+                }
+                
                 inputContainer.appendChild(label);
                 inputContainer.appendChild(input);
+                inputContainer.appendChild(validationMsg);
                 box.appendChild(inputContainer);
             });
             
@@ -811,6 +964,56 @@
         function saveToJSON() {
             // Collect input values first
             collectInputValues();
+            
+            // Validate all boxes
+            let hasErrors = false;
+            boxes.forEach(boxData => {
+                const boxType = boxTypes[boxData.type];
+                if (!boxType) return;
+                
+                boxType.inputs.forEach((inputConfig, index) => {
+                    const value = boxData.inputs[index];
+                    
+                    // Check required field
+                    if (inputConfig.required && (!value || value.trim() === '')) {
+                        hasErrors = true;
+                        boxData.validationErrors = boxData.validationErrors || {};
+                        boxData.validationErrors[inputConfig.id] = 'This field is required';
+                        
+                        // Update UI
+                        const validationMsg = document.getElementById(`${boxData.id}-${inputConfig.id}-validation`);
+                        const input = document.getElementById(`${boxData.id}-${inputConfig.id}`);
+                        if (validationMsg && input) {
+                            validationMsg.textContent = 'This field is required';
+                            validationMsg.style.display = 'block';
+                            input.style.borderColor = 'red';
+                        }
+                    } 
+                    // Run custom validation if available
+                    else if (inputConfig.validation && value) {
+                        const error = inputConfig.validation(value);
+                        if (error) {
+                            hasErrors = true;
+                            boxData.validationErrors = boxData.validationErrors || {};
+                            boxData.validationErrors[inputConfig.id] = error;
+                            
+                            // Update UI
+                            const validationMsg = document.getElementById(`${boxData.id}-${inputConfig.id}-validation`);
+                            const input = document.getElementById(`${boxData.id}-${inputConfig.id}`);
+                            if (validationMsg && input) {
+                                validationMsg.textContent = error;
+                                validationMsg.style.display = 'block';
+                                input.style.borderColor = 'red';
+                            }
+                        }
+                    }
+                });
+            });
+            
+            if (hasErrors) {
+                alert("Please fix validation errors before saving.");
+                return;
+            }
             
             // Convert boxes to formatted JSON
             const boxesJSON = JSON.stringify(boxes, null, 2);
