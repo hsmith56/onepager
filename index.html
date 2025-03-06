@@ -23,7 +23,7 @@
         
         .box {
             position: absolute;
-            width: 250px; /* Increased width to accommodate labels */
+            width: 250px;
             border: 2px solid #000;
             background-color: white;
             padding: 10px;
@@ -38,6 +38,22 @@
             margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
+        }
+        
+        .header-controls {
+            display: flex;
+            align-items: center;
+        }
+        
+        .menu-dots {
+            margin-right: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            user-select: none;
+        }
+        
+        .menu-dots:hover {
+            color: #4CAF50;
         }
         
         .remove-btn {
@@ -112,7 +128,7 @@
             cursor: pointer;
         }
         
-        #encoded-output, #encoded-input {
+        #json-output, #json-input {
             width: 100%;
             height: 100px;
             margin-top: 10px;
@@ -160,6 +176,46 @@
             gap: 10px;
             margin-top: 10px;
         }
+        
+        /* Menu styles */
+        .config-menu {
+            display: none;
+            position: fixed; /* Changed from absolute to fixed */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            padding: 20px;
+            z-index: 1001; /* Higher than modal backdrop */
+            width: 300px;
+        }
+        
+        .config-item {
+            margin-bottom: 12px;
+        }
+        
+        .config-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .config-item label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .config-item select, .config-item input[type="checkbox"] {
+            padding: 5px;
+            width: 100%;
+        }
+        
+        .config-item input[type="checkbox"] {
+            width: auto;
+        }
     </style>
 </head>
 <body>
@@ -167,8 +223,8 @@
     
     <div class="controls">
         <button id="add-box-btn">Add Box</button>
-        <button id="encode-btn">Encode</button>
-        <button id="load-btn">Load from Encoded String</button>
+        <button id="save-btn">Save to JSON</button>
+        <button id="load-btn">Load from JSON</button>
     </div>
     
     <div class="workspace" id="workspace">
@@ -186,23 +242,26 @@
         </div>
     </div>
     
-    <!-- Encoded Output Modal -->
-    <div class="modal" id="encoded-modal">
+    <!-- JSON Output Modal -->
+    <div class="modal" id="json-modal">
         <div class="modal-content">
-            <span class="close" id="close-encoded-modal">&times;</span>
-            <h2>Encoded Data</h2>
-            <textarea id="encoded-output" readonly></textarea>
+            <span class="close" id="close-json-modal">&times;</span>
+            <h2>JSON Data</h2>
+            <textarea id="json-output" readonly></textarea>
             <button id="copy-btn">Copy to Clipboard</button>
+            <button id="download-btn">Download JSON</button>
         </div>
     </div>
     
-    <!-- Load Encoded String Modal -->
+    <!-- Load JSON String Modal -->
     <div class="modal" id="load-modal">
         <div class="modal-content">
             <span class="close" id="close-load-modal">&times;</span>
-            <h2>Load from Encoded String</h2>
-            <textarea id="encoded-input" placeholder="Paste your encoded string here..."></textarea>
+            <h2>Load from JSON</h2>
+            <textarea id="json-input" placeholder="Paste your JSON here..."></textarea>
             <button id="load-confirm-btn">Load</button>
+            <button id="upload-btn">Upload JSON File</button>
+            <input type="file" id="file-input" accept=".json" style="display: none;">
         </div>
     </div>
     
@@ -211,23 +270,27 @@
         let boxes = [];
         let boxIdCounter = 0;
         let clickPosition = { x: 0, y: 0 };
+        let activeConfigMenu = null;
         
         // DOM Elements
         const workspace = document.getElementById('workspace');
         const connectionsSvg = document.getElementById('connections-svg');
         const addBoxBtn = document.getElementById('add-box-btn');
-        const encodeBtn = document.getElementById('encode-btn');
+        const saveBtn = document.getElementById('save-btn');
         const loadBtn = document.getElementById('load-btn');
         const boxTypeModal = document.getElementById('box-type-modal');
         const closeBoxModal = document.getElementById('close-box-modal');
-        const encodedModal = document.getElementById('encoded-modal');
-        const closeEncodedModal = document.getElementById('close-encoded-modal');
+        const jsonModal = document.getElementById('json-modal');
+        const closeJsonModal = document.getElementById('close-json-modal');
         const loadModal = document.getElementById('load-modal');
         const closeLoadModal = document.getElementById('close-load-modal');
-        const encodedOutput = document.getElementById('encoded-output');
-        const encodedInput = document.getElementById('encoded-input');
+        const jsonOutput = document.getElementById('json-output');
+        const jsonInput = document.getElementById('json-input');
         const copyBtn = document.getElementById('copy-btn');
+        const downloadBtn = document.getElementById('download-btn');
         const loadConfirmBtn = document.getElementById('load-confirm-btn');
+        const uploadBtn = document.getElementById('upload-btn');
+        const fileInput = document.getElementById('file-input');
         const boxTypesContainer = document.getElementById('box-types-container');
         
         // Initialize drag state
@@ -305,13 +368,25 @@
         
         // Add event listeners
         addBoxBtn.addEventListener('click', showBoxTypeModal);
-        encodeBtn.addEventListener('click', encodeBoxes);
+        saveBtn.addEventListener('click', saveToJSON);
         loadBtn.addEventListener('click', showLoadModal);
         closeBoxModal.addEventListener('click', hideBoxTypeModal);
-        closeEncodedModal.addEventListener('click', hideEncodedModal);
+        closeJsonModal.addEventListener('click', hideJsonModal);
         closeLoadModal.addEventListener('click', hideLoadModal);
         copyBtn.addEventListener('click', copyToClipboard);
-        loadConfirmBtn.addEventListener('click', loadFromEncoded);
+        downloadBtn.addEventListener('click', downloadJSON);
+        loadConfirmBtn.addEventListener('click', loadFromJSON);
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        workspace.addEventListener('click', handleWorkspaceClick);
+        
+        // Close any open menu when clicking elsewhere
+        document.addEventListener('click', function(e) {
+            if (activeConfigMenu && !activeConfigMenu.contains(e.target) && 
+                e.target.className !== 'menu-dots' && !e.target.closest('.menu-dots')) {
+                activeConfigMenu.style.display = 'none';
+                activeConfigMenu = null;
+            }
+        });
         
         // Also allow clicking on the workspace to add boxes
         workspace.addEventListener('click', handleWorkspaceClick);
@@ -334,13 +409,13 @@
             boxTypeModal.style.display = 'none';
         }
         
-        function hideEncodedModal() {
-            encodedModal.style.display = 'none';
+        function hideJsonModal() {
+            jsonModal.style.display = 'none';
         }
         
         function showLoadModal() {
             loadModal.style.display = 'block';
-            encodedInput.focus();
+            jsonInput.focus();
         }
         
         function hideLoadModal() {
@@ -353,6 +428,29 @@
                 clickPosition.x = e.clientX - workspace.getBoundingClientRect().left;
                 clickPosition.y = e.clientY - workspace.getBoundingClientRect().top;
                 showBoxTypeModal(e);
+            }
+        }
+        
+        function toggleConfigMenu(e, boxId) {
+            e.stopPropagation();
+            
+            // Close any open menu first
+            if (activeConfigMenu) {
+                activeConfigMenu.style.display = 'none';
+                
+                // If clicking the same menu button, just close it and exit
+                if (activeConfigMenu.dataset.boxId === boxId) {
+                    activeConfigMenu = null;
+                    return;
+                }
+            }
+            
+            // Get the config menu for this box
+            const configMenu = document.getElementById(`config-menu-${boxId}`);
+            if (configMenu) {                
+                // Show the menu
+                configMenu.style.display = 'block';
+                activeConfigMenu = configMenu;
             }
         }
         
@@ -391,16 +489,129 @@
                 type: type,
                 position: position,
                 inputs: Array(inputCount).fill(''),
-                index: boxIndex
+                index: boxIndex,
+                config: {
+                    actionOnError: 'continue',
+                    example_b: false
+                }
             };
+            
+            // Ensure config object exists in existing data
+            if (existingData && !existingData.config) {
+                existingData.config = {
+                    actionOnError: 'continue',
+                    example_b: false
+                };
+            }
             
             // Create box header
             const header = document.createElement('div');
             header.className = 'box-header';
-            header.innerHTML = `<span>${boxConfig.name} (${inputCount} input${inputCount > 1 ? 's' : ''})</span>
-                              <span class="remove-btn" data-id="${boxId}">×</span>`;
+            
+            const boxTitle = document.createElement('span');
+            boxTitle.textContent = `${boxConfig.name} (${inputCount} input${inputCount > 1 ? 's' : ''})`;
+            
+            const headerControls = document.createElement('div');
+            headerControls.className = 'header-controls';
+            
+            // Add 3-dot menu
+            const menuDots = document.createElement('span');
+            menuDots.className = 'menu-dots';
+            menuDots.textContent = '⋮';
+            menuDots.title = 'Box Configuration';
+            menuDots.addEventListener('click', (e) => toggleConfigMenu(e, boxId));
+            
+            // Add remove button
+            const removeBtn = document.createElement('span');
+            removeBtn.className = 'remove-btn';
+            removeBtn.textContent = '×';
+            removeBtn.dataset.id = boxId;
+            removeBtn.addEventListener('click', () => removeBox(boxId));
+            
+            headerControls.appendChild(menuDots);
+            headerControls.appendChild(removeBtn);
+            
+            header.appendChild(boxTitle);
+            header.appendChild(headerControls);
             
             box.appendChild(header);
+            
+            // Create config menu
+            const configMenu = document.createElement('div');
+            configMenu.className = 'config-menu';
+            configMenu.id = `config-menu-${boxId}`;
+            configMenu.dataset.boxId = boxId;
+            
+            // Action on error dropdown
+            const actionItem = document.createElement('div');
+            actionItem.className = 'config-item';
+            
+            const actionLabel = document.createElement('label');
+            actionLabel.textContent = 'Action on error:';
+            actionLabel.htmlFor = `${boxId}-action`;
+            
+            const actionSelect = document.createElement('select');
+            actionSelect.id = `${boxId}-action`;
+            
+            const continueOption = document.createElement('option');
+            continueOption.value = 'continue';
+            continueOption.textContent = 'continue';
+            
+            const errorOption = document.createElement('option');
+            errorOption.value = 'error';
+            errorOption.textContent = 'error';
+            
+            // Set selected option based on box data
+            if (boxData.config && boxData.config.actionOnError === 'error') {
+                errorOption.selected = true;
+            } else {
+                continueOption.selected = true;
+            }
+            
+            actionSelect.appendChild(continueOption);
+            actionSelect.appendChild(errorOption);
+            
+            actionSelect.addEventListener('change', (e) => {
+                const boxIndex = boxes.findIndex(box => box.id === boxId);
+                if (boxIndex !== -1) {
+                    boxes[boxIndex].config.actionOnError = e.target.value;
+                }
+            });
+            
+            actionItem.appendChild(actionLabel);
+            actionItem.appendChild(actionSelect);
+            
+            // Example_b checkbox
+            const exampleItem = document.createElement('div');
+            exampleItem.className = 'config-item';
+            
+            const exampleLabel = document.createElement('label');
+            exampleLabel.textContent = 'example_b:';
+            exampleLabel.htmlFor = `${boxId}-example`;
+            
+            const exampleCheckbox = document.createElement('input');
+            exampleCheckbox.type = 'checkbox';
+            exampleCheckbox.id = `${boxId}-example`;
+            
+            // Set checked state based on box data
+            if (boxData.config && boxData.config.example_b) {
+                exampleCheckbox.checked = true;
+            }
+            
+            exampleCheckbox.addEventListener('change', (e) => {
+                const boxIndex = boxes.findIndex(box => box.id === boxId);
+                if (boxIndex !== -1) {
+                    boxes[boxIndex].config.example_b = e.target.checked;
+                }
+            });
+            
+            exampleItem.appendChild(exampleLabel);
+            exampleItem.appendChild(exampleCheckbox);
+            
+            configMenu.appendChild(actionItem);
+            configMenu.appendChild(exampleItem);
+            
+            box.appendChild(configMenu);
             
             // Add input fields
             boxConfig.inputs.forEach((inputConfig, i) => {
@@ -427,7 +638,10 @@
                 // Add event listener to update box data
                 input.addEventListener('input', (e) => {
                     const index = parseInt(e.target.dataset.index);
-                    boxData.inputs[index] = e.target.value;
+                    const boxIndex = boxes.findIndex(box => box.id === boxId);
+                    if (boxIndex !== -1) {
+                        boxes[boxIndex].inputs[index] = e.target.value;
+                    }
                 });
                 
                 inputContainer.appendChild(label);
@@ -436,9 +650,6 @@
             });
             
             workspace.appendChild(box);
-            
-            // Add remove event listener
-            box.querySelector('.remove-btn').addEventListener('click', () => removeBox(boxId));
             
             // Add box to boxes array if it's new
             if (!existingData) {
@@ -480,6 +691,12 @@
                         }
                     }
                 });
+                
+                // Close menu if open
+                if (activeConfigMenu) {
+                    activeConfigMenu.style.display = 'none';
+                    activeConfigMenu = null;
+                }
                 
                 // Redraw connections
                 drawConnections();
@@ -527,8 +744,10 @@
         }
         
         function startDrag(e) {
-            // Check if the click is on an input field - if so, don't start dragging
-            if (e.target.classList.contains('input-field')) {
+            // Check if the click is on an input field, config menu, or menu dots - if so, don't start dragging
+            if (e.target.classList.contains('input-field') || 
+                e.target.classList.contains('menu-dots') || 
+                e.target.closest('.config-menu')) {
                 return;
             }
             
@@ -589,17 +808,16 @@
             currentDragElement = null;
         }
         
-        function encodeBoxes() {
+        function saveToJSON() {
             // Collect input values first
             collectInputValues();
             
-            // Convert boxes to JSON and encode as base64
-            const boxesJSON = JSON.stringify(boxes);
-            const encodedData = btoa(boxesJSON);
+            // Convert boxes to formatted JSON
+            const boxesJSON = JSON.stringify(boxes, null, 2);
             
             // Display in modal
-            encodedOutput.value = encodedData;
-            encodedModal.style.display = 'block';
+            jsonOutput.value = boxesJSON;
+            jsonModal.style.display = 'block';
         }
         
         function collectInputValues() {
@@ -610,12 +828,24 @@
                     inputs.forEach((input, index) => {
                         boxData.inputs[index] = input.value;
                     });
+                    
+                    // Collect config values
+                    const actionSelect = document.getElementById(`${boxData.id}-action`);
+                    const exampleCheckbox = document.getElementById(`${boxData.id}-example`);
+                    
+                    if (actionSelect) {
+                        boxData.config.actionOnError = actionSelect.value;
+                    }
+                    
+                    if (exampleCheckbox) {
+                        boxData.config.example_b = exampleCheckbox.checked;
+                    }
                 }
             });
         }
         
         function copyToClipboard() {
-            encodedOutput.select();
+            jsonOutput.select();
             document.execCommand('copy');
             
             // Show feedback
@@ -626,20 +856,34 @@
             }, 2000);
         }
         
-        function loadFromEncoded() {
+        function downloadJSON() {
+            // Create a blob and download link
+            const data = jsonOutput.value;
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'boxes-layout.json';
+            link.click();
+            
+            // Clean up
+            URL.revokeObjectURL(url);
+        }
+        
+        function loadFromJSON() {
             try {
-                const encodedString = encodedInput.value.trim();
-                if (!encodedString) {
-                    alert("Please enter an encoded string.");
+                const jsonString = jsonInput.value.trim();
+                if (!jsonString) {
+                    alert("Please enter JSON data.");
                     return;
                 }
                 
-                const decodedJSON = atob(encodedString);
-                const loadedBoxes = JSON.parse(decodedJSON);
+                const loadedBoxes = JSON.parse(jsonString);
                 
                 // Check if the loaded data is valid
                 if (!Array.isArray(loadedBoxes)) {
-                    throw new Error("Invalid box data format.");
+                    throw new Error("Invalid box data format. Expected an array.");
                 }
                 
                 // Clear existing boxes
@@ -665,7 +909,7 @@
                 hideLoadModal();
                 
                 // Clear the input field for next time
-                encodedInput.value = '';
+                jsonInput.value = '';
             } catch (error) {
                 alert("Error loading boxes: " + error.message);
             }
