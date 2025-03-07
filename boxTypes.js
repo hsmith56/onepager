@@ -1,9 +1,9 @@
 // Define box types - central configuration for all box types
 const boxTypes = {
     'A': {
-        name: 'Box A',
+        function_name: 'Box A',
         description: 'Single input box',
-        inputs: [
+        parameters: [
             { 
                 id: 'input1', 
                 label: 'Value', 
@@ -15,9 +15,9 @@ const boxTypes = {
         ]
     },
     'B': {
-        name: 'Box B',
+        function_name: 'Box B',
         description: 'Two input box',
-        inputs: [
+        parameters: [
             { 
                 id: 'input1', 
                 label: 'Name', 
@@ -35,9 +35,9 @@ const boxTypes = {
         ]
     },
     'C': {
-        name: 'Box C',
+        function_name: 'Box C',
         description: 'Three input box',
-        inputs: [
+        parameters: [
             { 
                 id: 'input1', 
                 label: 'X', 
@@ -62,9 +62,9 @@ const boxTypes = {
         ]
     },
     'D': {
-        name: 'Box D',
+        function_name: 'Box D',
         description: 'Four input box',
-        inputs: [
+        parameters: [
             { 
                 id: 'name', 
                 label: 'Name', 
