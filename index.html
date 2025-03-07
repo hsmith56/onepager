@@ -307,7 +307,7 @@
                 const boxConfig = boxTypes[type];
                 const button = document.createElement('button');
                 button.id = `box-type-${type.toLowerCase()}`;
-                button.textContent = `${boxConfig.name} (${boxConfig.inputs.length} input${boxConfig.inputs.length > 1 ? 's' : ''})`;
+                button.textContent = `${boxConfig.function_name} (${boxConfig.parameters.length} input${boxConfig.parameters.length > 1 ? 's' : ''})`;
                 button.title = boxConfig.description;
                 button.addEventListener('click', () => createBox(type));
                 
@@ -416,6 +416,306 @@
             }
         }
         
+        // function createBox(type, existingData = null) {
+        //     // Get box configuration
+        //     const boxConfig = boxTypes[type];
+        //     if (!boxConfig) {
+        //         console.error(`Box type ${type} not found`);
+        //         return;
+        //     }
+            
+        //     const inputCount = boxConfig.parameters.length;
+        //     const boxId = existingData ? existingData.id : `box-${boxIdCounter++}`;
+        //     const boxIndex = existingData ? existingData.index : boxes.length;
+            
+        //     const box = document.createElement('div');
+        //     box.className = 'box';
+        //     box.id = boxId;
+            
+        //     // Position the box
+        //     const position = existingData ? existingData.position : { x: clickPosition.x, y: clickPosition.y };
+        //     box.style.left = `${position.x}px`;
+        //     box.style.top = `${position.y}px`;
+        //     box.dataset.index = boxIndex;
+        //     box.dataset.type = type;
+            
+        //     // Add box number
+        //     const boxNumber = document.createElement('div');
+        //     boxNumber.className = 'box-number';
+        //     boxNumber.textContent = boxIndex + 1; // 1-based numbering for display
+        //     box.appendChild(boxNumber);
+            
+        //     // Create box data structure with default values from the box type
+        //     const boxInputs = boxConfig.parameters.map((inputConfig, idx) => {
+        //         if (existingData && existingData.parameters && existingData.parameters[idx] !== undefined) {
+        //             return existingData.parameters[idx];
+        //         } else {
+        //             return inputConfig.defaultValue || '';
+        //         }
+        //     });
+            
+        //     const boxData = existingData || {
+        //         id: boxId,
+        //         function_name: type,
+        //         position: position,
+        //         parameters: boxInputs,
+        //         index: boxIndex,
+        //         config: {
+        //             actionOnError: 'continue',
+        //             example_b: false
+        //         },
+        //         validationErrors: {}
+        //     };
+            
+        //     // Ensure config object exists in existing data
+        //     if (existingData && !existingData.config) {
+        //         existingData.config = {
+        //             actionOnError: 'continue',
+        //             example_b: false
+        //         };
+        //     }
+            
+        //     // Initialize validationErrors if not present
+        //     if (!boxData.validationErrors) {
+        //         boxData.validationErrors = {};
+        //     }
+            
+        //     // Create box header
+        //     const header = document.createElement('div');
+        //     header.className = 'box-header';
+            
+        //     const boxTitle = document.createElement('span');
+        //     boxTitle.textContent = `${boxConfig.function_name} (${inputCount} input${inputCount > 1 ? 's' : ''})`;
+            
+        //     const headerControls = document.createElement('div');
+        //     headerControls.className = 'header-controls';
+            
+        //     // Add 3-dot menu
+        //     const menuDots = document.createElement('span');
+        //     menuDots.className = 'menu-dots';
+        //     menuDots.textContent = '⋮';
+        //     menuDots.title = 'Box Configuration';
+        //     menuDots.addEventListener('click', (e) => toggleConfigMenu(e, boxId));
+            
+        //     // Add remove button
+        //     const removeBtn = document.createElement('span');
+        //     removeBtn.className = 'remove-btn';
+        //     removeBtn.textContent = '×';
+        //     removeBtn.dataset.id = boxId;
+        //     removeBtn.addEventListener('click', () => removeBox(boxId));
+            
+        //     headerControls.appendChild(menuDots);
+        //     headerControls.appendChild(removeBtn);
+            
+        //     header.appendChild(boxTitle);
+        //     header.appendChild(headerControls);
+            
+        //     box.appendChild(header);
+            
+        //     // Create config menu
+        //     const configMenu = document.createElement('div');
+        //     configMenu.className = 'config-menu';
+        //     configMenu.id = `config-menu-${boxId}`;
+        //     configMenu.dataset.boxId = boxId;
+            
+        //     // Action on error dropdown
+        //     const actionItem = document.createElement('div');
+        //     actionItem.className = 'config-item';
+            
+        //     const actionLabel = document.createElement('label');
+        //     actionLabel.textContent = 'Action on error:';
+        //     actionLabel.htmlFor = `${boxId}-action`;
+            
+        //     const actionSelect = document.createElement('select');
+        //     actionSelect.id = `${boxId}-action`;
+            
+        //     const continueOption = document.createElement('option');
+        //     continueOption.value = 'continue';
+        //     continueOption.textContent = 'continue';
+            
+        //     const errorOption = document.createElement('option');
+        //     errorOption.value = 'error';
+        //     errorOption.textContent = 'error';
+            
+        //     // Set selected option based on box data
+        //     if (boxData.config && boxData.config.actionOnError === 'error') {
+        //         errorOption.selected = true;
+        //     } else {
+        //         continueOption.selected = true;
+        //     }
+            
+        //     actionSelect.appendChild(continueOption);
+        //     actionSelect.appendChild(errorOption);
+            
+        //     actionSelect.addEventListener('change', (e) => {
+        //         const boxIndex = boxes.findIndex(box => box.id === boxId);
+        //         if (boxIndex !== -1) {
+        //             boxes[boxIndex].config.actionOnError = e.target.value;
+        //         }
+        //     });
+            
+        //     actionItem.appendChild(actionLabel);
+        //     actionItem.appendChild(actionSelect);
+            
+        //     // Example_b checkbox
+        //     const exampleItem = document.createElement('div');
+        //     exampleItem.className = 'config-item';
+            
+        //     const exampleLabel = document.createElement('label');
+        //     exampleLabel.textContent = 'example_b:';
+        //     exampleLabel.htmlFor = `${boxId}-example`;
+            
+        //     const exampleCheckbox = document.createElement('input');
+        //     exampleCheckbox.type = 'checkbox';
+        //     exampleCheckbox.id = `${boxId}-example`;
+            
+        //     // Set checked state based on box data
+        //     if (boxData.config && boxData.config.example_b) {
+        //         exampleCheckbox.checked = true;
+        //     }
+            
+        //     exampleCheckbox.addEventListener('change', (e) => {
+        //         const boxIndex = boxes.findIndex(box => box.id === boxId);
+        //         if (boxIndex !== -1) {
+        //             boxes[boxIndex].config.example_b = e.target.checked;
+        //         }
+        //     });
+            
+        //     exampleItem.appendChild(exampleLabel);
+        //     exampleItem.appendChild(exampleCheckbox);
+            
+        //     configMenu.appendChild(actionItem);
+        //     configMenu.appendChild(exampleItem);
+            
+        //     box.appendChild(configMenu);
+
+        //     // Add input fields
+        //     boxConfig.parameters.forEach((inputConfig, i) => {
+        //         const inputContainer = document.createElement('div');
+        //         inputContainer.className = 'input-container';
+                
+        //         const label = document.createElement('label');
+        //         label.className = 'input-label';
+        //         label.textContent = inputConfig.label + (inputConfig.required ? ' *' : ':');
+        //         label.htmlFor = `${boxId}-${inputConfig.id}`;
+                
+        //         if (inputConfig.required) {
+        //             label.style.fontWeight = 'bold';
+        //         }
+                
+        //         const input = document.createElement('input');
+        //         input.type = 'text';
+        //         input.className = 'input-field';
+        //         input.id = `${boxId}-${inputConfig.id}`;
+        //         input.placeholder = inputConfig.placeholder;
+        //         input.dataset.index = i;
+        //         input.dataset.required = inputConfig.required ? 'true' : 'false';
+                
+        //         console.log(boxData)
+
+        //         // Set value if it exists, otherwise use default value
+        //         if (boxData.parameters && boxData.parameters[i] !== undefined) {
+        //             input.value = boxData.parameters[i];
+        //         } else {
+        //             input.value = inputConfig.defaultValue || '';
+        //         }
+                
+        //         // Create validation message element
+        //         const validationMsg = document.createElement('div');
+        //         validationMsg.className = 'validation-message';
+        //         validationMsg.style.color = 'red';
+        //         validationMsg.style.fontSize = '0.8em';
+        //         validationMsg.style.marginTop = '2px';
+        //         validationMsg.style.display = 'none';
+        //         validationMsg.id = `${boxId}-${inputConfig.id}-validation`;
+                
+        //         // Add event listener to update box data and validate
+        //         input.addEventListener('input', (e) => {
+        //             const index = parseInt(e.target.dataset.index);
+        //             const boxIndex = boxes.findIndex(box => box.id === boxId);
+        //             if (boxIndex !== -1) {
+        //                 boxes[boxIndex].parameters[index] = e.target.value;
+                        
+        //                 // Run validation if available
+        //                 if (inputConfig.validation) {
+        //                     const error = inputConfig.validation(e.target.value);
+        //                     boxes[boxIndex].validationErrors[inputConfig.id] = error;
+                            
+        //                     // Update UI
+        //                     if (error) {
+        //                         validationMsg.textContent = error;
+        //                         validationMsg.style.display = 'block';
+        //                         input.style.borderColor = 'red';
+        //                     } else {
+        //                         validationMsg.style.display = 'none';
+        //                         input.style.borderColor = '';
+        //                     }
+        //                 } else if (inputConfig.required && e.target.value.trim() === '') {
+        //                     // Basic required field validation
+        //                     boxes[boxIndex].validationErrors[inputConfig.id] = 'This field is required';
+        //                     validationMsg.textContent = 'This field is required';
+        //                     validationMsg.style.display = 'block';
+        //                     input.style.borderColor = 'red';
+        //                 } else {
+        //                     // Clear validation errors
+        //                     boxes[boxIndex].validationErrors[inputConfig.id] = null;
+        //                     validationMsg.style.display = 'none';
+        //                     input.style.borderColor = '';
+        //                 }
+        //             }
+        //         });
+                
+        //         // Trigger validation on creation for required fields
+        //         if (inputConfig.required && (!input.value || input.value.trim() === '')) {
+        //             const boxIndex = boxes.findIndex(box => box.id === boxId) || boxes.length;
+        //             if (boxIndex !== -1) {
+        //                 if (!boxes[boxIndex]) {
+        //                     boxes[boxIndex] = boxData;
+        //                 }
+        //                 boxes[boxIndex].validationErrors[inputConfig.id] = 'This field is required';
+        //                 validationMsg.textContent = 'This field is required';
+        //                 validationMsg.style.display = 'block';
+        //                 input.style.borderColor = 'red';
+        //             }
+        //         } else if (inputConfig.validation && input.value) {
+        //             // Run validation for non-empty fields
+        //             const error = inputConfig.validation(input.value);
+        //             if (error) {
+        //                 const boxIndex = boxes.findIndex(box => box.id === boxId) || boxes.length;
+        //                 if (boxIndex !== -1) {
+        //                     if (!boxes[boxIndex]) {
+        //                         boxes[boxIndex] = boxData;
+        //                     }
+        //                     boxes[boxIndex].validationErrors[inputConfig.id] = error;
+        //                     validationMsg.textContent = error;
+        //                     validationMsg.style.display = 'block';
+        //                     input.style.borderColor = 'red';
+        //                 }
+        //             }
+        //         }
+                
+        //         inputContainer.appendChild(label);
+        //         inputContainer.appendChild(input);
+        //         inputContainer.appendChild(validationMsg);
+        //         box.appendChild(inputContainer);
+        //     });
+            
+        //     workspace.appendChild(box);
+            
+        //     // Add box to boxes array if it's new
+        //     if (!existingData) {
+        //         boxes.push(boxData);
+        //     }
+            
+        //     // Draw connections
+        //     drawConnections();
+            
+        //     // Hide the modal after creating the box
+        //     hideBoxTypeModal();
+            
+        //     return boxData;
+        // }
+        
         function createBox(type, existingData = null) {
             // Get box configuration
             const boxConfig = boxTypes[type];
@@ -424,7 +724,7 @@
                 return;
             }
             
-            const inputCount = boxConfig.inputs.length;
+            const inputCount = boxConfig.parameters.length;
             const boxId = existingData ? existingData.id : `box-${boxIdCounter++}`;
             const boxIndex = existingData ? existingData.index : boxes.length;
             
@@ -446,19 +746,32 @@
             box.appendChild(boxNumber);
             
             // Create box data structure with default values from the box type
-            const boxInputs = boxConfig.inputs.map((inputConfig, idx) => {
-                if (existingData && existingData.inputs && existingData.inputs[idx] !== undefined) {
-                    return existingData.inputs[idx];
+            let boxParameters = {};
+            
+            // Initialize parameters as key-value pairs instead of array
+            if (existingData && existingData.parameters) {
+                // Handle case where existingData might still have the old array format
+                if (Array.isArray(existingData.parameters)) {
+                    boxConfig.parameters.forEach((paramConfig, idx) => {
+                        boxParameters[paramConfig.label] = existingData.parameters[idx] !== undefined ? 
+                            existingData.parameters[idx] : (paramConfig.defaultValue || '');
+                    });
                 } else {
-                    return inputConfig.defaultValue || '';
+                    // Already in object format
+                    boxParameters = existingData.parameters;
                 }
-            });
+            } else {
+                // Create new object with default values
+                boxConfig.parameters.forEach(paramConfig => {
+                    boxParameters[paramConfig.label] = paramConfig.defaultValue || '';
+                });
+            }
             
             const boxData = existingData || {
                 id: boxId,
-                type: type,
+                function_name: type,
                 position: position,
-                inputs: boxInputs,
+                parameters: boxParameters,
                 index: boxIndex,
                 config: {
                     actionOnError: 'continue',
@@ -466,6 +779,11 @@
                 },
                 validationErrors: {}
             };
+            
+            // If existing data doesn't have parameters in object format, update it
+            if (existingData && Array.isArray(existingData.parameters)) {
+                existingData.parameters = boxParameters;
+            }
             
             // Ensure config object exists in existing data
             if (existingData && !existingData.config) {
@@ -485,7 +803,7 @@
             header.className = 'box-header';
             
             const boxTitle = document.createElement('span');
-            boxTitle.textContent = `${boxConfig.name} (${inputCount} input${inputCount > 1 ? 's' : ''})`;
+            boxTitle.textContent = `${boxConfig.function_name} (${inputCount} input${inputCount > 1 ? 's' : ''})`;
             
             const headerControls = document.createElement('div');
             headerControls.className = 'header-controls';
@@ -590,7 +908,7 @@
             box.appendChild(configMenu);
 
             // Add input fields
-            boxConfig.inputs.forEach((inputConfig, i) => {
+            boxConfig.parameters.forEach((inputConfig, i) => {
                 const inputContainer = document.createElement('div');
                 inputContainer.className = 'input-container';
                 
@@ -609,14 +927,12 @@
                 input.id = `${boxId}-${inputConfig.id}`;
                 input.placeholder = inputConfig.placeholder;
                 input.dataset.index = i;
+                input.dataset.paramLabel = inputConfig.label; // Store parameter label for reference
                 input.dataset.required = inputConfig.required ? 'true' : 'false';
                 
-                // Set value if it exists, otherwise use default value
-                if (boxData.inputs && boxData.inputs[i] !== undefined) {
-                    input.value = boxData.inputs[i];
-                } else {
-                    input.value = inputConfig.defaultValue || '';
-                }
+                // Set value from parameters object using label as key
+                input.value = boxData.parameters[inputConfig.label] !== undefined ? 
+                    boxData.parameters[inputConfig.label] : (inputConfig.defaultValue || '');
                 
                 // Create validation message element
                 const validationMsg = document.createElement('div');
@@ -629,10 +945,10 @@
                 
                 // Add event listener to update box data and validate
                 input.addEventListener('input', (e) => {
-                    const index = parseInt(e.target.dataset.index);
+                    const paramLabel = e.target.dataset.paramLabel;
                     const boxIndex = boxes.findIndex(box => box.id === boxId);
                     if (boxIndex !== -1) {
-                        boxes[boxIndex].inputs[index] = e.target.value;
+                        boxes[boxIndex].parameters[paramLabel] = e.target.value;
                         
                         // Run validation if available
                         if (inputConfig.validation) {
@@ -713,7 +1029,7 @@
             
             return boxData;
         }
-        
+
         function removeBox(boxId) {
             // Find the index of the box to remove
             const boxIndex = boxes.findIndex(box => box.id === boxId);
@@ -864,11 +1180,11 @@
             // Validate all boxes
             let hasErrors = false;
             boxes.forEach(boxData => {
-                const boxType = boxTypes[boxData.type];
+                const boxType = boxTypes[boxData.function_name];
                 if (!boxType) return;
                 
-                boxType.inputs.forEach((inputConfig, index) => {
-                    const value = boxData.inputs[index];
+                boxType.parameters.forEach((inputConfig) => {
+                    const value = boxData.parameters[inputConfig.label];
                     
                     // Check required field
                     if (inputConfig.required && (!value || value.trim() === '')) {
@@ -924,8 +1240,11 @@
                 const box = document.getElementById(boxData.id);
                 if (box) {
                     const inputs = box.querySelectorAll('input.input-field');
-                    inputs.forEach((input, index) => {
-                        boxData.inputs[index] = input.value;
+                    inputs.forEach((input) => {
+                        const paramLabel = input.dataset.paramLabel;
+                        if (paramLabel) {
+                            boxData.parameters[paramLabel] = input.value;
+                        }
                     });
                     
                     // Collect config values
@@ -1031,7 +1350,33 @@
                 connectionsSvg.removeChild(connectionsSvg.firstChild);
             }
         }
-        
+        function migrateBoxDataParameters() {
+            boxes.forEach(boxData => {
+                // Skip if already migrated
+                if (!Array.isArray(boxData.parameters)) return;
+                
+                const boxType = boxTypes[boxData.function_name];
+                if (!boxType) return;
+                
+                const newParams = {};
+                boxType.parameters.forEach((paramConfig, idx) => {
+                    newParams[paramConfig.label] = boxData.parameters[idx] !== undefined ? 
+                        boxData.parameters[idx] : (paramConfig.defaultValue || '');
+                });
+                
+                boxData.parameters = newParams;
+            });
+        }
+
+        // Add code to migrate existing data when page loads
+        window.addEventListener('load', function() {
+            // If we have existing boxes, migrate their parameters
+            if (boxes.length > 0) {
+                migrateBoxDataParameters();
+            }
+            
+            updateSvgSize();
+        });
         // Add these event listeners for input interaction
         workspace.addEventListener('mousedown', startDrag);
         document.addEventListener('mousemove', dragElement);
