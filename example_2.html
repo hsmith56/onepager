@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Box Drag & Drop Interface</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-hover: #3a56d4;
+            --secondary: #4cc9f0;
+            --danger: #ef476f;
+            --success: #06d6a0;
+            --warning: #ffd166;
+            --text: #2b2d42;
+            --text-light: #8d99ae;
+            --background: #f8f9fa;
+            --card: #ffffff;
+            --border: #e9ecef;
+            --border-hover: #ced4da;
+            --shadow: rgba(0, 0, 0, 0.05);
+            --shadow-hover: rgba(0, 0, 0, 0.1);
+            --radius: 8px;
+            --transition: all 0.2s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            color: var(--text);
+            background-color: var(--background);
+            line-height: 1.5;
+            padding: 0;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        header {
+            background-color: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 0;
+            box-shadow: 0 2px 4px var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0;
+            color: var(--text);
+        }
+
+        button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 16px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 2px 4px var(--shadow);
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+            box-shadow: 0 4px 8px var(--shadow-hover);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        button:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        button.secondary {
+            background-color: white;
+            color: var(--primary);
+            border: 1px solid var(--border);
+        }
+
+        button.secondary:hover {
+            border-color: var(--border-hover);
+            background-color: var(--background);
+        }
+
+        button.danger {
+            background-color: var(--danger);
+        }
+
+        button.danger:hover {
+            background-color: #d63e63;
+        }
+
+        button svg {
+            margin-right: 6px;
+        }
+
+        .workspace-container {
+            flex: 1;
+            padding: 20px 0;
+            overflow: hidden;
+        }
+
+        .workspace {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 180px);
+            border: 2px dashed var(--border-hover);
+            border-radius: var(--radius);
+            background-color: var(--card);
+            overflow: auto;
+            box-shadow: inset 0 0 10px var(--shadow);
+        }
+
+        .box {
+            position: absolute;
+            width: 280px;
+            border-radius: var(--radius);
+            background-color: var(--card);
+            box-shadow: 0 2px 8px var(--shadow);
+            padding: 0;
+            cursor: move;
+            user-select: none;
+            z-index: 10;
+            transition: box-shadow 0.2s ease;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .box:hover {
+            box-shadow: 0 4px 12px var(--shadow-hover);
+        }
+
+        .box-header {
+            padding: 12px 16px;
+            background-color: var(--primary);
+            color: white;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top-left-radius: var(--radius);
+            border-top-right-radius: var(--radius);
+        }
+
+        .box-content {
+            padding: 16px;
+        }
+
+        .remove-btn {
+            cursor: pointer;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .remove-btn:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .input-container {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 12px;
+        }
+
+        .input-container:last-child {
+            margin-bottom: 0;
+        }
+
+        .input-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text);
+            cursor: help;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-label .info-icon {
+            margin-left: 6px;
+            color: var(--text-light);
+            font-size: 0.75rem;
+        }
+
+        .tooltip {
+            visibility: hidden;
+            position: absolute;
+            left: 0;
+            top: 100%;
+            background-color: var(--text);
+            color: white;
+            padding: 8px 12px;
+            border-radius: var(--radius);
+            font-size: 0.75rem;
+            font-weight: normal;
+            width: max-content;
+            max-width: 250px;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            box-shadow: 0 4px 12px var(--shadow-hover);
+            margin-top: 8px;
+        }
+
+        .tooltip::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 16px;
+            border-width: 0 6px 6px 6px;
+            border-style: solid;
+            border-color: transparent transparent var(--text) transparent;
+        }
+
+        .input-label:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .tooltip-link {
+            color: var(--secondary);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .tooltip-link:hover {
+            text-decoration: none;
+        }
+
+        .input-field {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            transition: var(--transition);
+            width: 100%;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+        }
+
+        .input-field::placeholder {
+            color: var(--text-light);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            position: relative;
+            background-color: var(--card);
+            margin: 5% auto;
+            padding: 24px;
+            width: 90%;
+            max-width: 600px;
+            border-radius: var(--radius);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text);
+            margin: 0;
+        }
+
+        .close {
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-light);
+            transition: var(--transition);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .close:hover {
+            color: var(--text);
+            background-color: var(--border);
+        }
+
+        .box-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .box-type-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background-color: var(--card);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .box-type-btn:hover {
+            border-color: var(--primary);
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+
+        .box-type-btn .icon {
+            font-size: 24px;
+            margin-bottom: 12px;
+            color: var(--primary);
+        }
+
+        .box-type-btn .title {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .box-type-btn .description {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-align: center;
+        }
+
+        #json-output, #json-input {
+            width: 100%;
+            height: 200px;
+            margin: 16px 0;
+            padding: 12px;
+            font-family: monospace;
+            white-space: pre;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            resize: vertical;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        #connections-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .connector {
+            stroke: var(--primary);
+            stroke-width: 2;
+            stroke-dasharray: 5, 5;
+            fill: none;
+        }
+
+        .box-number {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background-color: var(--primary);
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            text-align: center;
+            line-height: 24px;
+            font-weight: bold;
+            font-size: 0.75rem;
+            box-shadow: 0 2px 4px var(--shadow);
+        }
+
+        .lorem-text {
+            line-height: 1.6;
+            margin-top: 20px;
+            padding: 16px;
+            background-color: var(--background);
+            border-radius: var(--radius);
+            border-left: 4px solid var(--primary);
+        }
+
+        .lorem-text p {
+            margin-bottom: 16px;
+        }
+
+        .lorem-text p:last-child {
+            margin-bottom: 0;
+        }
+
+        #lorem-modal .modal-content {
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .tooltip-help {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: var(--text-light);
+            color: white;
+            font-size: 10px;
+            margin-left: 6px;
+            cursor: help;
+        }
+
+        .status-message {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 16px;
+            background-color: var(--success);
+            color: white;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .status-message.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .workspace-guide {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-light);
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .workspace-guide svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            
+            .workspace {
+                height: calc(100vh - 240px);
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+                padding: 16px;
+            }
+            
+            .box {
+                width: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-content">
+            <h1>Box Drag & Drop Interface</h1>
+        </div>
+    </header>
+    
+    <main class="container">
+        <div class="controls">
+            <button id="add-box-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Box
+            </button>
+            <button id="sort-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="4" y1="9" x2="20" y2="9"></line>
+                    <line x1="4" y1="15" x2="20" y2="15"></line>
+                    <line x1="10" y1="3" x2="8" y2="21"></line>
+                    <line x1="16" y1="3" x2="14" y2="21"></line>
+                </svg>
+                Arrange Boxes
+            </button>
+            <button id="save-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                Save to JSON
+            </button>
+            <button id="load-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Load from JSON
+            </button>
+            <button id="lorem-btn" class="secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                </svg>
+                Lorem Ipsum
+            </button>
+        </div>
+        
+        <div class="workspace-container">
+            <div class="workspace" id="workspace">
+                <svg id="connections-svg"></svg>
+                <div class="workspace-guide" id="workspace-guide">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    <p>Click anywhere or use the "Add Box" button to start</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Box Type Selection Modal -->
+    <div class="modal" id="box-type-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Select Box Type</h2>
+                <span class="close" id="close-box-modal">&times;</span>
+            </div>
+            <p>Choose the type of box you want to add to your workspace:</p>
+            <div class="box-buttons" id="box-types-container">
+                <!-- Box types will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- JSON Output Modal -->
+    <div class="modal" id="json-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">JSON Data</h2>
+                <span class="close" id="close-json-modal">&times;</span>
+            </div>
+            <p>Your box configuration has been converted to JSON format:</p>
+            <textarea id="json-output" readonly aria-label="JSON Output"></textarea>
+            <div class="modal-actions">
+                <button id="copy-btn" class="secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    Copy to Clipboard
+                </button>
+                <button id="download-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Download JSON
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Load JSON Modal -->
+    <div class="modal" id="load-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Load from JSON</h2>
+                <span class="close" id="close-load-modal">&times;</span>
+            </div>
+            <p>Paste your JSON data below or upload a JSON file:</p>
+            <textarea id="json-input" placeholder="Paste your JSON here..." aria-label="JSON Input"></textarea>
+            <div class="modal-actions">
+                <button id="upload-btn" class="secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    Upload JSON File
+                </button>
+                <button id="load-confirm-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    Load
+                </button>
+            </div>
+            <input type="file" id="file-input" accept=".json" style="display: none;">
+        </div>
+    </div>
+
+    <!-- Lorem Ipsum Modal -->
+    <div class="modal" id="lorem-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Lorem Ipsum</h2>
+                <span class="close" id="close-lorem-modal">&times;</span>
+            </div>
+            <div class="lorem-text">
+                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula. Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor. Ut in nulla enim. Phasellus molestie magna non est bibendum non venenatis nisl tempor. Suspendisse dictum feugiat nisl ut dapibus.</p>
+                
+                <p>Mauris iaculis porttitor posuere. Praesent id metus massa, ut blandit odio. Proin quis tortor orci. Etiam at risus et justo dignissim congue. Donec congue lacinia dui, a porttitor lectus condimentum laoreet. Nunc eu ullamcorper orci. Quisque eget odio ac lectus vestibulum faucibus eget in metus. In pellentesque faucibus vestibulum. Nulla at nulla justo, eget luctus tortor.</p>
+                
+                <p>Fusce mauris. Vestibulum luctus nibh at lectus. Sed bibendum, nulla a faucibus semper, leo velit ultricies tellus, ac venenatis arcu wisi vel nisl. Vestibulum diam. Aliquam pellentesque, augue quis sagittis posuere, turpis lacus congue quam, in hendrerit risus eros eget felis. Maecenas eget erat in sapien mattis porttitor. Vestibulum porttitor. Nulla facilisi.</p>
+                
+                <p>Aenean nec lorem. In porttitor. Donec laoreet nonummy augue. Suspendisse dui purus, scelerisque at, vulputate vitae, pretium mattis, nunc. Mauris eget neque at sem venenatis eleifend. Ut nonummy. Fusce aliquet pede non pede. Suspendisse dapibus lorem pellentesque magna. Integer nulla. Donec blandit feugiat ligula.</p>
+                
+                <p>Donec hendrerit, felis et imperdiet euismod, purus ipsum pretium metus, in lacinia nulla nisl eget sapien. Donec ut est in lectus consequat consequat. Etiam eget dui. Aliquam erat volutpat. Sed at lorem in nunc porta tristique. Proin nec augue. Quisque aliquam tempor magna. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Message -->
+    <div class="status-message" id="status-message"></div>
+    
+    <script>
+        // Global variables
+        let boxes = [];
+        let boxIdCounter = 0;
+        let clickPosition = { x: 0, y: 0 };
+        
+        // DOM Elements
+        const workspace = document.getElementById('workspace');
+        const workspaceGuide = document.getElementById('workspace-guide');
+        const connectionsSvg = document.getElementById('connections-svg');
+        const addBoxBtn = document.getElementById('add-box-btn');
+        const sortBtn = document.getElementById('sort-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const loadBtn = document.getElementById('load-btn');
+        const boxTypeModal = document.getElementById('box-type-modal');
+        const closeBoxModal = document.getElementById('close-box-modal');
+        const jsonModal = document.getElementById('json-modal');
+        const closeJsonModal = document.getElementById('close-json-modal');
+        const loadModal = document.getElementById('load-modal');
+        const closeLoadModal = document.getElementById('close-load-modal');
+        const jsonOutput = document.getElementById('json-output');
+        const jsonInput = document.getElementById('json-input');
+        const copyBtn = document.getElementById('copy-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const loadConfirmBtn = document.getElementById('load-confirm-btn');
+        const uploadBtn = document.getElementById('upload-btn');
+        const fileInput = document.getElementById('file-input');
+        const boxTypesContainer = document.getElementById('box-types-container');
+        const loremBtn = document.getElementById('lorem-btn');
+        const loremModal = document.getElementById('lorem-modal');
+        const closeLoremModal = document.getElementById('close-lorem-modal');
+        const statusMessage = document.getElementById('status-message');
+        
+        // Initialize drag state
+        let isDragging = false;
+        let currentDragElement = null;
+        let offsetX = 0;
+        let offsetY = 0;
+        
+        // Define box types - central configuration for all box types
+        const boxTypes = {
+            'A': {
+                name: 'Box A',
+                description: 'Single input box with basic configuration',
+                icon: '📋',
+                inputs: [
+                    { id: 'input1', label: 'Value', placeholder: 'Enter value', hover_text: 'This is the text to show when hovering' },
+                    { id: 'input2', label: 'Value 2', placeholder: 'Enter second value', hover_text: 'This is another text to show when hovering https://www.google.com' }
+                ]
+            },
+            'B': {
+                name: 'Box B',
+                description: 'Two input box with advanced options',
+                icon: '🔧',
+                inputs: [
+                    { id: 'input1', label: 'Value', placeholder: 'Enter value', hover_text: 'This is the text to show when hovering' },
+                    { id: 'input2', label: 'Value 2', placeholder: 'Enter second value', hover_text: 'This is another text to show when hovering' }
+                ]
+            },
+        };
+        
+        // Initialize box type buttons
+        function initializeBoxTypeButtons() {
+            boxTypesContainer.innerHTML = '';
+            
+            Object.keys(boxTypes).forEach(type => {
+                const boxConfig = boxTypes[type];
+                const button = document.createElement('div');
+                button.className = 'box-type-btn';
+                button.id = `box-type-${type.toLowerCase()}`;
+                button.innerHTML = `
+                    <div class="icon">${boxConfig.icon}</div>
+                    <div class="title">${boxConfig.name}</div>
+                    <div class="description">${boxConfig.description}</div>
+                `;
+                button.title = boxConfig.description;
+                button.addEventListener('click', () => createBox(type));
+                
+                boxTypesContainer.appendChild(button);
+            });
+        }
+
+        // Function to show status message
+        function showStatusMessage(message, type = 'success') {
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type}`;
+            statusMessage.classList.add('show');
+            
+            setTimeout(() => {
+                statusMessage.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Update SVG size
+        function updateSvgSize() {
+            connectionsSvg.setAttribute('width', workspace.clientWidth);
+            connectionsSvg.setAttribute('height', workspace.clientHeight);
+        }
+        
+        // Check if workspace is empty and show/hide guide
+        function updateWorkspaceGuide() {
+            if (boxes.length === 0) {
+                workspaceGuide.style.display = 'block';
+            } else {
+                workspaceGuide.style.display = 'none';
+            }
+        }
+        
+        // Update on load and window resize
+        window.addEventListener('load', () => {
+            updateSvgSize();
+            updateWorkspaceGuide();
+        });
+        window.addEventListener('resize', updateSvgSize);
+        
+        // Add event listeners
+        addBoxBtn.addEventListener('click', () => {
+            clickPosition = { x: 50, y: 50 };
+            showBoxTypeModal();
+        });
+        sortBtn.addEventListener('click', sortBoxes);
+        saveBtn.addEventListener('click', saveToJson);
+        loadBtn.addEventListener('click', showLoadModal);
+        closeBoxModal.addEventListener('click', hideBoxTypeModal);
+        closeJsonModal.addEventListener('click', hideJsonModal);
+        closeLoadModal.addEventListener('click', hideLoadModal);
+        copyBtn.addEventListener('click', copyToClipboard);
+        downloadBtn.addEventListener('click', downloadJson);
+        loadConfirmBtn.addEventListener('click', loadFromJson);
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileUpload);
+        loremBtn.addEventListener('click', showLoremModal);
+        closeLoremModal.addEventListener('click', hideLoremModal);
+        
+        // Also allow clicking on the workspace to add boxes
+        workspace.addEventListener('click', handleWorkspaceClick);
+        
+        // Functions
+        // Function to convert URLs in text to HTML links
+        function linkifyText(text) {
+            // Regular expression to identify URLs
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            return text.replace(urlRegex, '<a href="$1" target="_blank" class="tooltip-link">$1</a>');
+        }
+
+        function showLoremModal() {
+            loremModal.style.display = 'block';
+        }
+
+        function hideLoremModal() {
+            loremModal.style.display = 'none';
+        }
+
+        function showBoxTypeModal() {
+            boxTypeModal.style.display = 'block';
+        }
+        
+        function hideBoxTypeModal() {
+            boxTypeModal.style.display = 'none';
+        }
+        
+        function hideJsonModal() {
+            jsonModal.style.display = 'none';
+        }
+        
+        function showLoadModal() {
+            loadModal.style.display = 'block';
+            jsonInput.focus();
+        }
+        
+        function hideLoadModal() {
+            loadModal.style.display = 'none';
+        }
+        
+        function handleWorkspaceClick(e) {
+            // Only show modal if clicking directly on the workspace (not on a box)
+            if (e.target === workspace || e.target === connectionsSvg) {
+                clickPosition.x = e.clientX - workspace.getBoundingClientRect().left;
+                clickPosition.y = e.clientY - workspace.getBoundingClientRect().top;
+                showBoxTypeModal();
+            }
+        }
+        
+        function createBox(type, existingData = null) {
+            // Get box configuration
+            const boxConfig = boxTypes[type];
+            if (!boxConfig) {
+                console.error(`Box type ${type} not found`);
+                return;
+            }
+            
+            const inputCount = boxConfig.inputs.length;
+            const boxId = existingData?.id || `box-${boxIdCounter++}`;
+            const boxIndex = existingData?.index !== undefined ? existingData.index : boxes.length;
+            
+            const box = document.createElement('div');
+            box.className = 'box';
+            box.id = boxId;
+            box.setAttribute('aria-label', `${boxConfig.name} box`);
+            
+            // Position the box - use default if not provided
+            const position = existingData?.position || { x: clickPosition.x, y: clickPosition.y };
+            box.style.left = `${position.x}px`;
+            box.style.top = `${position.y}px`;
+            box.dataset.index = boxIndex;
+            box.dataset.type = type;
+            
+            // Add box number
+            const boxNumber = document.createElement('div');
+            boxNumber.className = 'box-number';
+            boxNumber.textContent = boxIndex + 1; // 1-based numbering for display
+            boxNumber.setAttribute('aria-label', `Box number ${boxIndex + 1}`);
+            box.appendChild(boxNumber);
+            
+            // Create box data structure
+            const boxData = existingData || {
+                id: boxId,
+                type: type,
+                position: position,
+                inputs: Array(inputCount).fill(''),
+                index: boxIndex
+            };
+            
+            // Ensure inputs array exists and has the right length
+            if (!boxData.inputs || !Array.isArray(boxData.inputs)) {
+                boxData.inputs = Array(inputCount).fill('');
+            } else if (boxData.inputs.length < inputCount) {
+                // Extend the array if needed
+                boxData.inputs = [...boxData.inputs, ...Array(inputCount - boxData.inputs.length).fill('')];
+            }
+            
+            // Create box header
+            const header = document.createElement('div');
+            header.className = 'box-header';
+            header.innerHTML = `
+                <span>${boxConfig.name}</span>
+                <div class="remove-btn" data-id="${boxId}" aria-label="Remove box" role="button" tabindex="0">×</div>
+            `;
+            
+            box.appendChild(header);
+            
+            // Create box content container
+            const content = document.createElement('div');
+            content.className = 'box-content';
+            box.appendChild(content);
+            
+            // Add input fields
+            boxConfig.inputs.forEach((inputConfig, i) => {
+                const inputContainer = document.createElement('div');
+                inputContainer.className = 'input-container';
+                
+                const label = document.createElement('label');
+                label.className = 'input-label';
+                label.textContent = inputConfig.label;
+                label.htmlFor = `${boxId}-${inputConfig.id}`;
+                
+                // Add tooltip span for hover text
+                if (inputConfig.hover_text) {
+                    const tooltipIcon = document.createElement('span');
+                    tooltipIcon.className = 'tooltip-help';
+                    tooltipIcon.textContent = '?';
+                    tooltipIcon.setAttribute('aria-label', 'Help information');
+                    
+                    const tooltip = document.createElement('span');
+                    tooltip.className = 'tooltip';
+                    tooltip.setAttribute('role', 'tooltip');
+                    tooltip.innerHTML = linkifyText(inputConfig.hover_text);
+                    
+                    label.appendChild(tooltipIcon);
+                    label.appendChild(tooltip);
+                }
+                
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'input-field';
+                input.id = `${boxId}-${inputConfig.id}`;
+                input.placeholder = inputConfig.placeholder;
+                input.dataset.index = i;
+                input.setAttribute('aria-label', inputConfig.label);
+                
+                // Set value if it exists
+                if (boxData.inputs && boxData.inputs[i] !== undefined) {
+                    input.value = boxData.inputs[i];
+                }
+                
+                // Add event listener to update box data
+                input.addEventListener('input', (e) => {
+                    const index = parseInt(e.target.dataset.index);
+                    boxData.inputs[index] = e.target.value;
+                });
+                
+                inputContainer.appendChild(label);
+                inputContainer.appendChild(input);
+                content.appendChild(inputContainer);
+            });
+            
+            workspace.appendChild(box);
+            
+            // Add remove event listener
+            const removeBtn = box.querySelector('.remove-btn');
+            removeBtn.addEventListener('click', () => removeBox(boxId));
+            removeBtn.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    removeBox(boxId);
+                }
+            });
+            
+            // Add box to boxes array if it's new
+            if (!existingData) {
+                boxes.push(boxData);
+                showStatusMessage(`Added new ${boxConfig.name}`);
+            }
+            
+            // Update workspace guide
+            updateWorkspaceGuide();
+            
+            // Hide the modal after creating the box
+            hideBoxTypeModal();
+            
+            return boxData;
+        }
+        
+        function removeBox(boxId) {
+            // Find the index of the box to remove
+            const boxIndex = boxes.findIndex(box => box.id === boxId);
+            
+            if (boxIndex !== -1) {
+                // Get box type for status message
+                const boxType = boxes[boxIndex].type;
+                const boxName = boxTypes[boxType]?.name || 'Box';
+                
+                // Remove from DOM
+                const box = document.getElementById(boxId);
+                if (box) {
+                    box.remove();
+                }
+                
+                // Remove from data structure
+                boxes.splice(boxIndex, 1);
+                
+                // Update the index property of all remaining boxes
+                boxes.forEach((box, idx) => {
+                    box.index = idx;
+                    const boxElement = document.getElementById(box.id);
+                    if (boxElement) {
+                        boxElement.dataset.index = idx;
+                        const boxNumber = boxElement.querySelector('.box-number');
+                        if (boxNumber) {
+                            boxNumber.textContent = idx + 1; // 1-based numbering for display
+                        }
+                    }
+                });
+                
+                // Show status message
+                showStatusMessage(`Removed ${boxName}`);
+
+                
+                // Update workspace guide
+                updateWorkspaceGuide();
+            }
+        }
+        
+        // Function to sort boxes in a grid pattern
+        function sortBoxes() {
+            if (boxes.length === 0) {
+                showStatusMessage('No boxes to arrange', 'warning');
+                return;
+            }
+            
+            // Sort boxes by their index
+            const sortedBoxes = [...boxes].sort((a, b) => a.index - b.index);
+            
+            // Get workspace dimensions
+            const workspaceWidth = workspace.clientWidth;
+            const workspaceHeight = workspace.clientHeight;
+            
+            // Set padding between boxes
+            const horizontalPadding = 30;
+            const verticalPadding = 50;
+            
+            // Calculate the default box width (for layout calculations)
+            const defaultBoxWidth = 280;
+            const defaultBoxHeight = 150;
+            
+            // Calculate how many boxes can fit in a row
+            const boxesPerRow = Math.floor((workspaceWidth - horizontalPadding) / (defaultBoxWidth + horizontalPadding));
+            
+            // Ensure at least one box per row
+            const effectiveBoxesPerRow = Math.max(1, Math.min(boxesPerRow, 3));
+            
+            // Calculate starting position for first box (centered horizontally)
+            const rowWidth = effectiveBoxesPerRow * defaultBoxWidth + (effectiveBoxesPerRow - 1) * horizontalPadding;
+            const startX = Math.max(horizontalPadding, (workspaceWidth - rowWidth) / 2);
+            let currentY = verticalPadding;
+            
+            // Process boxes row by row
+            for (let rowStart = 0; rowStart < sortedBoxes.length; rowStart += effectiveBoxesPerRow) {
+                const rowEnd = Math.min(rowStart + effectiveBoxesPerRow, sortedBoxes.length);
+                const currentRow = sortedBoxes.slice(rowStart, rowEnd);
+                
+                // Find the actual heights of boxes in this row
+                let maxRowHeight = defaultBoxHeight;
+                currentRow.forEach(box => {
+                    const boxElement = document.getElementById(box.id);
+                    if (boxElement) {
+                        const boxHeight = boxElement.offsetHeight;
+                        maxRowHeight = Math.max(maxRowHeight, boxHeight);
+                    }
+                });
+                
+                // Position boxes in this row
+                currentRow.forEach((box, colIndex) => {
+                    const x = startX + colIndex * (defaultBoxWidth + horizontalPadding);
+                    const y = currentY;
+                    
+                    // Update box position
+                    box.position = { x, y };
+                    
+                    // Update DOM element position
+                    const boxElement = document.getElementById(box.id);
+                    if (boxElement) {
+                        boxElement.style.left = `${x}px`;
+                        boxElement.style.top = `${y}px`;
+                    }
+                });
+                
+                // Update Y position for the next row based on the tallest box in this row
+                currentY += maxRowHeight + verticalPadding;
+            }
+            
+            // Show status message
+            showStatusMessage('Boxes arranged successfully');
+        }
+        
+        function startDrag(e) {
+            // Check if the click is on an input field - if so, don't start dragging
+            if (e.target.classList.contains('input-field') || 
+                e.target.classList.contains('remove-btn') || 
+                e.target.classList.contains('tooltip-help')) {
+                return;
+            }
+            
+            // Check if the click is on a box or its child
+            let target = e.target;
+            while (target && !target.classList.contains('box')) {
+                if (target === workspace || target === connectionsSvg) {
+                    return; // Don't drag if clicking on workspace
+                }
+                target = target.parentElement;
+            }
+            
+            if (target && target.classList.contains('box')) {
+                isDragging = true;
+                currentDragElement = target;
+                
+                // Calculate offset
+                const rect = currentDragElement.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+                
+                // Add dragging class
+                currentDragElement.classList.add('dragging');
+                
+                // Prevent default behavior
+                e.preventDefault();
+            }
+        }
+        
+        function dragElement(e) {
+            if (!isDragging || !currentDragElement) return;
+            
+            e.preventDefault();
+            
+            // Calculate new position
+            const workspaceRect = workspace.getBoundingClientRect();
+            let newX = e.clientX - workspaceRect.left - offsetX;
+            let newY = e.clientY - workspaceRect.top - offsetY;
+            
+            // Constrain to workspace
+            newX = Math.max(0, Math.min(newX, workspaceRect.width - currentDragElement.offsetWidth));
+            newY = Math.max(0, Math.min(newY, workspaceRect.height - currentDragElement.offsetHeight));
+            
+            // Update element position
+            currentDragElement.style.left = `${newX}px`;
+            currentDragElement.style.top = `${newY}px`;
+            
+            // Update box data
+            const boxId = currentDragElement.id;
+            const boxIndex = boxes.findIndex(box => box.id === boxId);
+            if (boxIndex !== -1) {
+                boxes[boxIndex].position = { x: newX, y: newY };
+            }
+        }
+        
+        function stopDrag() {
+            if (currentDragElement) {
+                currentDragElement.classList.remove('dragging');
+            }
+            isDragging = false;
+            currentDragElement = null;
+        }
+        
+        function saveToJson() {
+            if (boxes.length === 0) {
+                showStatusMessage('No boxes to save', 'warning');
+                return;
+            }
+            
+            // Collect input values first
+            collectInputValues();
+            
+            // Format JSON with indentation for readability
+            const formattedJson = JSON.stringify(boxes, null, 2);
+            
+            // Display in modal
+            jsonOutput.value = formattedJson;
+            jsonModal.style.display = 'block';
+            
+            // Show status message
+            showStatusMessage('Configuration saved to JSON');
+        }
+        
+        function downloadJson() {
+            // Create a Blob with the JSON data
+            const jsonString = jsonOutput.value;
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            
+            // Create a temporary link element to trigger the download
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'boxes-layout.json';
+            
+            // Append to body, click, and remove
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Show status message
+            showStatusMessage('JSON file downloaded');
+        }
+        
+        function collectInputValues() {
+            boxes.forEach(boxData => {
+                const box = document.getElementById(boxData.id);
+                if (box) {
+                    const inputs = box.querySelectorAll('input.input-field');
+                    inputs.forEach((input, index) => {
+                        boxData.inputs[index] = input.value;
+                    });
+                }
+            });
+        }
+        
+        function copyToClipboard() {
+            jsonOutput.select();
+            document.execCommand('copy');
+            
+            // Show feedback
+            showStatusMessage('JSON copied to clipboard');
+        }
+        
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                jsonInput.value = e.target.result;
+            };
+            reader.readAsText(file);
+            
+            // Reset file input
+            fileInput.value = '';
+            
+            // Show status message
+            showStatusMessage('File loaded successfully');
+        }
+        
+        function loadFromJson() {
+            try {
+                const jsonString = jsonInput.value.trim();
+                if (!jsonString) {
+                    showStatusMessage('Please enter JSON data', 'warning');
+                    return;
+                }
+                
+                const loadedBoxes = JSON.parse(jsonString);
+                
+                // Check if the loaded data is valid
+                if (!Array.isArray(loadedBoxes)) {
+                    throw new Error("Invalid box data format. Expected an array.");
+                }
+                
+                // Clear existing boxes
+                clearAllBoxes();
+                
+                // Find the highest counter value to avoid ID conflicts
+                let maxId = 0;
+                loadedBoxes.forEach(box => {
+                    const idMatch = box.id?.match(/box-(\d+)/);
+                    if (idMatch && parseInt(idMatch[1]) > maxId) {
+                        maxId = parseInt(idMatch[1]);
+                    }
+                });
+                boxIdCounter = maxId + 1;
+                
+                // Process loaded boxes
+                const processedBoxes = loadedBoxes.map((boxData, idx) => {
+                    // Create default position if none exists
+                    if (!boxData.position) {
+                        boxData.position = { x: 50, y: 50 + (idx * 20) };
+                    }
+                    
+                    // Ensure box has an index property
+                    if (boxData.index === undefined) {
+                        boxData.index = idx;
+                    }
+                    
+                    // Ensure box has an id
+                    if (!boxData.id) {
+                        boxData.id = `box-${boxIdCounter++}`;
+                    }
+                    
+                    return boxData;
+                });
+                
+                // Create boxes based on loaded data
+                processedBoxes.sort((a, b) => a.index - b.index);
+                processedBoxes.forEach(boxData => {
+                    // Check if box type exists
+                    if (!boxTypes[boxData.type]) {
+                        showStatusMessage(`Unknown box type: ${boxData.type}. Skipping.`, 'warning');
+                        return;
+                    }
+                    
+                    boxes.push(boxData);
+                    createBox(boxData.type, boxData);
+                });
+                
+                // Automatically sort boxes after loading
+                setTimeout(sortBoxes, 100);
+                
+                hideLoadModal();
+                
+                // Clear the input field for next time
+                jsonInput.value = '';
+                
+                // Show status message
+                showStatusMessage(`Loaded ${processedBoxes.length} boxes successfully`);
+            } catch (error) {
+                showStatusMessage(`Error loading boxes: ${error.message}`, 'danger');
+            }
+        }
+        
+        function clearAllBoxes() {
+            // Remove all box elements from DOM
+            boxes.forEach(box => {
+                const element = document.getElementById(box.id);
+                if (element) {
+                    element.remove();
+                }
+            });
+            
+            // Clear the boxes array
+            boxes = [];
+            
+            // Clear connections
+            while (connectionsSvg.firstChild) {
+                connectionsSvg.removeChild(connectionsSvg.firstChild);
+            }
+            
+            // Update workspace guide
+            updateWorkspaceGuide();
+        }
+        
+        // Add these event listeners for input interaction
+        workspace.addEventListener('mousedown', startDrag);
+        document.addEventListener('mousemove', dragElement);
+        document.addEventListener('mouseup', stopDrag);
+        
+        // Initialize the application
+        initializeBoxTypeButtons();
+        updateSvgSize();
+    </script>
+</body>
+</html>
